@@ -241,6 +241,37 @@ body:has(.admin-login-page) .site-header, body:has(.admin-login-page) .site-foot
 .product-admin-actions button:disabled { opacity: .5; }
 .product-admin-actions svg { width: 13px; }
 .product-admin-actions small { flex-basis: 100%; color: #93493e; }
+.admin-order-list { background: white; padding: 0 26px; }
+.admin-order-list-head, .admin-order-row { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.6fr) .6fr .75fr .7fr 1.35fr; gap: 18px; align-items: center; }
+.admin-order-list-head { padding: 18px 0; color: #8b837a; font-size: 8px; letter-spacing: .12em; text-transform: uppercase; }
+.admin-order-row { min-height: 96px; padding: 16px 0; border-top: 1px solid #e7e2dc; font-size: 11px; }
+.admin-order-identity { display: grid; gap: 3px; }
+.admin-order-identity strong, .admin-order-identity a { font: 500 15px var(--font-display), serif; }
+.admin-order-identity a:hover { color: var(--accent); }
+.admin-order-identity small { color: #817971; font-size: 9px; }
+.admin-order-items { display: grid; gap: 3px; color: #5f5953; }
+.admin-order-total { font-weight: 600; }
+.admin-order-payment { display: flex; gap: 7px; align-items: center; }
+.admin-order-payment i { width: 7px; height: 7px; border-radius: 50%; background: #aa9680; }
+.admin-order-payment i.paid { background: #5f8762; }
+.admin-order-payment i.unpaid { background: #c2a14e; }
+.admin-order-payment i.refunded { background: #8a8079; }
+.admin-order-payment i.failed { background: #a04e3f; }
+.admin-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.admin-filter-bar a { padding: 8px 15px; border: 1px solid #e1dcd5; border-radius: 30px; color: #6c655e; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; transition: background .2s, color .2s, border-color .2s; }
+.admin-filter-bar a:hover { border-color: var(--ink); color: var(--ink); }
+.admin-filter-bar a.active { background: var(--ink); border-color: var(--ink); color: white; }
+.admin-order-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.admin-order-lines { grid-column: 1 / -1; }
+.order-detail-row { display: flex; justify-content: space-between; gap: 20px; padding: 11px 0; border-top: 1px solid #efeae4; font-size: 11px; }
+.order-detail-row:first-of-type { border-top: 0; }
+.order-detail-row > span { color: #837b74; }
+.order-detail-row strong { text-align: right; }
+.order-line-head, .order-line { display: grid; grid-template-columns: 2fr .5fr 1fr 1fr; gap: 12px; align-items: center; }
+.order-line-head { padding: 10px 0; color: #8b837a; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; }
+.order-line-head span:not(:first-child), .order-line span:not(:first-child) { text-align: right; }
+.order-line { padding: 12px 0; border-top: 1px solid #efeae4; font-size: 11px; }
+.order-line-total { margin-top: 4px; border-top: 1px solid var(--ink); font-weight: 600; }
 .product-admin-form { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
 .product-form-main { display: grid; gap: 24px; }
 .product-form-aside { display: grid; gap: 18px; position: sticky; top: 24px; }
@@ -377,6 +408,9 @@ body:has(.admin-login-page) .site-header, body:has(.admin-login-page) .site-foot
   .admin-content-header { align-items: end; }
   .admin-product-list { padding: 0 16px; overflow-x: auto; }
   .admin-product-list-head, .admin-product-row { min-width: 720px; }
+  .admin-order-list { padding: 0 16px; overflow-x: auto; }
+  .admin-order-list-head, .admin-order-row { min-width: 860px; }
+  .admin-order-detail { grid-template-columns: 1fr; }
   .product-admin-form { grid-template-columns: 1fr; }
   .product-form-aside { position: static; }
   .variant-admin-row { grid-template-columns: repeat(2, 1fr); }
