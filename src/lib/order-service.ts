@@ -1,32 +1,125 @@
-import { Prisma } from "@prisma/client";
+import { OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { OrderInput } from "@/lib/order-validation";
+import { computeShipping } from "@/lib/shipping";
 
+const orderInclude = {
+  items: { orderBy: { id: "asc" as const } },
+  user: { select: { name: true } },
+};
+
+export function listAdminOrders(where?: Prisma.OrderWhereInput) {
+  return prisma.order.findMany({ where, include: orderInclude, orderBy: { createdAt: "desc" } });
+}
+
+export function getAdminOrder(id: string) {
+  return prisma.order.findUnique({ where: { id }, include: orderInclude });
+}
+
+// Confirme le paiement. Le stock a déjà été décrémenté à la commande : on ne
+// touche donc pas au stock ici. Idempotent (si déjà payée) ; refuse une commande
+// annulée.
+export async function confirmOrderPayment(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUniqueOrThrow({ where: { id } });
+    if (order.status === OrderStatus.CANCELLED) throw new Error("ORDER_NOT_CONFIRMABLE");
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      return tx.order.findUniqueOrThrow({ where: { id }, include: orderInclude });
+    }
+    return tx.order.update({
+      where: { id },
+      data: { paymentStatus: PaymentStatus.PAID, status: OrderStatus.CONFIRMED },
+      include: orderInclude,
+    });
+  });
+}
+
+const FULFILLMENT_STATUSES: OrderStatus[] = [
+  OrderStatus.CONFIRMED,
+  OrderStatus.PREPARING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+];
+
+export function setOrderStatus(id: string, status: OrderStatus) {
+  if (!FULFILLMENT_STATUSES.includes(status)) throw new Error("INVALID_STATUS");
+  return prisma.order.update({ where: { id }, data: { status }, include: orderInclude });
+}
+
+// Annule une commande : restitue le stock (qui avait été décrémenté à la
+// commande) et passe le paiement en remboursé s'il avait été encaissé.
+// Idempotent : ne restitue pas deux fois.
+export async function cancelOrder(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUniqueOrThrow({ where: { id }, include: { items: true } });
+    if (order.status === OrderStatus.CANCELLED) {
+      return tx.order.findUniqueOrThrow({ where: { id }, include: orderInclude });
+    }
+    for (const item of order.items) {
+      await tx.productVariant.updateMany({
+        where: { productId: item.productId, volume: item.volume },
+        data: { stock: { increment: item.quantity } },
+      });
+    }
+    return tx.order.update({
+      where: { id },
+      data: {
+        status: OrderStatus.CANCELLED,
+        paymentStatus: order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus,
+      },
+      include: orderInclude,
+    });
+  });
+}
+
+// Crée une commande de façon sûre :
+// - le prix et le nom proviennent EXCLUSIVEMENT de la base (le client ne peut
+//   pas falsifier le montant) ;
+// - le stock est décrémenté de manière atomique et conditionnelle (refus si
+//   insuffisant, jamais de stock négatif) ;
+// - les frais de port sont calculés côté serveur (offerts dès 50 €).
 export async function createOrder(input: OrderInput) {
   return prisma.$transaction(async (tx) => {
-    // Validate stock for each item and decrement
+    const lineItems: { productId: string; name: string; volume: string; quantity: number; price: number }[] = [];
+
     for (const item of input.items) {
       const variant = await tx.productVariant.findFirst({
-        where: {
-          product: { slug: item.slug },
-          volume: item.volume,
-          isActive: true,
-        },
+        where: { product: { slug: item.slug }, volume: item.volume, isActive: true },
+        include: { product: true },
       });
 
-      if (!variant || variant.stock < item.quantity) {
-        throw new Error(`Stock insuffisant pour ${item.name} · ${item.volume}`);
+      if (!variant) {
+        throw new Error(`Article indisponible : ${item.name} · ${item.volume}`);
+      }
+      if (variant.stock < item.quantity) {
+        throw new Error(`Stock insuffisant pour ${variant.product.name} · ${item.volume}`);
       }
 
-      await tx.productVariant.update({
-        where: { id: variant.id },
-        data: { stock: { decrement: item.quantity } },
+      lineItems.push({
+        productId: variant.productId,
+        name: variant.product.name,
+        volume: variant.volume,
+        quantity: item.quantity,
+        price: variant.price,
       });
     }
 
-    const totalAmount = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Décrément atomique : la condition stock >= quantité empêche toute survente
+    // même en cas de commandes concurrentes.
+    for (const line of lineItems) {
+      const updated = await tx.productVariant.updateMany({
+        where: { productId: line.productId, volume: line.volume, stock: { gte: line.quantity } },
+        data: { stock: { decrement: line.quantity } },
+      });
+      if (updated.count === 0) {
+        throw new Error(`Stock insuffisant pour ${line.name} · ${line.volume}`);
+      }
+    }
 
-    const order = await tx.order.create({
+    const subtotal = lineItems.reduce((sum, line) => sum + line.price * line.quantity, 0);
+    const totalAmount = subtotal + computeShipping(subtotal);
+
+    return tx.order.create({
       data: {
         email: input.email,
         totalAmount,
@@ -34,40 +127,22 @@ export async function createOrder(input: OrderInput) {
         status: "PENDING",
         paymentStatus: "UNPAID",
         deliveryAddress: input.deliveryAddress as unknown as Prisma.InputJsonValue,
-        items: {
-          create: input.items.map((item) => ({
-            productId: item.slug, // Will be replaced by actual product ID lookup below
-            name: item.name,
-            volume: item.volume,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-        },
+        items: { create: lineItems },
       },
       include: { items: true },
     });
-
-    // Fix productId references by looking up actual product IDs
-    for (const item of input.items) {
-      const product = await tx.product.findUnique({ where: { slug: item.slug } });
-      if (product) {
-        const orderItem = order.items.find((oi) => oi.name === item.name && oi.volume === item.volume);
-        if (orderItem) {
-          await tx.orderItem.update({
-            where: { id: orderItem.id },
-            data: { productId: product.id },
-          });
-        }
-      }
-    }
-
-    return order;
   });
 }
 
 export function orderApiError(error: unknown) {
   if (error instanceof Error) {
-    if (error.message.includes("Stock insuffisant")) return { status: 409, message: error.message };
+    if (error.message.includes("Stock insuffisant") || error.message.includes("indisponible")) {
+      return { status: 409, message: error.message };
+    }
+    if (error.message === "INVALID_STATUS") return { status: 422, message: "Statut de commande invalide." };
+    if (error.message === "ORDER_NOT_CONFIRMABLE") {
+      return { status: 409, message: "Cette commande a été annulée et ne peut plus être confirmée." };
+    }
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") return { status: 409, message: "Conflit de données." };

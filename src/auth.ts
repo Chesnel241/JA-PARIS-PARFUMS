@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 const DUMMY_PASSWORD_HASH = "$2b$12$BOzOhJmIVTrjXq37lPscA.Np8E8s5RQh9brdBO5XlIbRC4Rdj9AG6";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   pages: { signIn: "/connexion-admin" },
   session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
   providers: [

@@ -22,7 +22,7 @@ const staggerContainer: Variants = {
   }
 };
 
-export function HomeContent({ products }: { products: Product[] }) {
+export function HomeContent({ products, accessories = [] }: { products: Product[]; accessories?: Product[] }) {
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
@@ -204,6 +204,41 @@ export function HomeContent({ products }: { products: Product[] }) {
           </motion.div>
         </motion.div>
       </section>
+
+      {/* Accessoires Section */}
+      {accessories.length > 0 && (
+        <section className="py-12 px-6 lg:px-12 max-w-7xl mx-auto mb-16">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={staggerContainer}
+          >
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+              <div>
+                <motion.p variants={fadeInUp} className="text-sm font-medium tracking-widest uppercase text-stone-500 mb-4">
+                  Les accessoires
+                </motion.p>
+                <motion.h2 variants={fadeInUp} className="text-4xl lg:text-5xl font-serif text-stone-900">
+                  Pièces<br />signature.
+                </motion.h2>
+              </div>
+              <motion.div variants={fadeInUp}>
+                <Link className="inline-flex items-center gap-2 text-stone-900 hover:text-amber-900 transition-colors pb-1 border-b border-stone-900 hover:border-amber-900" href="/accessoires">
+                  <span>Voir tous les accessoires</span>
+                  <ArrowRight size={17} />
+                </Link>
+              </motion.div>
+            </div>
+
+            <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
+              {accessories.slice(0, 3).map((product, index) => (
+                <ProductCard key={product.slug} product={product} index={index} />
+              ))}
+            </motion.div>
+          </motion.div>
+        </section>
+      )}
 
       {/* Craft Section */}
       <motion.section 

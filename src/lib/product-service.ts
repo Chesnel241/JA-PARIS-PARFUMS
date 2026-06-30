@@ -17,6 +17,7 @@ export function createAdminProduct(input: ProductInput) {
     data: {
       name: input.name,
       slug: input.slug,
+      category: input.category,
       description: input.description,
       story: input.story,
       images: input.images,
@@ -38,6 +39,7 @@ export async function updateAdminProduct(id: string, input: ProductInput) {
       data: {
         name: input.name,
         slug: input.slug,
+        category: input.category,
         description: input.description,
         story: input.story,
         images: input.images,

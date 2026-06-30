@@ -1,3 +1,4 @@
+import { ProductCategory } from "@prisma/client";
 import type { Product as CatalogProduct } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 
@@ -7,7 +8,8 @@ function toCatalogProduct(product: Awaited<ReturnType<typeof prisma.product.find
   return {
     slug: product.slug,
     name: product.name,
-    subtitle: "Parfum JAE Paris",
+    category: product.category,
+    subtitle: product.category === ProductCategory.ACCESSOIRE ? "Accessoire JAE Paris" : "Parfum JAE Paris",
     description: product.description,
     story: product.story,
     image: product.images[0] ?? "/parfum-noir.svg",
@@ -17,8 +19,12 @@ function toCatalogProduct(product: Awaited<ReturnType<typeof prisma.product.find
   };
 }
 
-export async function getPublicProducts() {
-  const products = await prisma.product.findMany({ where: { isActive: true }, include: catalogInclude, orderBy: { createdAt: "asc" } });
+export async function getPublicProducts(category?: ProductCategory) {
+  const products = await prisma.product.findMany({
+    where: { isActive: true, ...(category ? { category } : {}) },
+    include: catalogInclude,
+    orderBy: { createdAt: "asc" },
+  });
   return products.filter((product) => product.variants.length > 0).map(toCatalogProduct);
 }
 

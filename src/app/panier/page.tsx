@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowRight, LoaderCircle, Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import { useCart } from "@/lib/cart";
+import { FREE_SHIPPING_THRESHOLD, computeShipping } from "@/lib/shipping";
 
 export default function CartPage() {
   const { items, total, updateQuantity, removeItem, clearCart } = useCart();
@@ -138,11 +139,16 @@ export default function CartPage() {
             </div>
             <div>
               <span>Livraison</span>
-              <span>{total >= 15000 ? "Offerte" : "Calculée à l’étape suivante"}</span>
+              <span>{computeShipping(total) === 0 ? "Offerte" : formatPrice(computeShipping(total))}</span>
             </div>
+            {computeShipping(total) > 0 && (
+              <small style={{ display: "block", padding: "4px 0", color: "#766e66", fontSize: 9 }}>
+                Plus que {formatPrice(FREE_SHIPPING_THRESHOLD - total)} pour la livraison offerte.
+              </small>
+            )}
             <div className="summary-total">
               <span>Total</span>
-              <strong>{formatPrice(total)}</strong>
+              <strong>{formatPrice(total + computeShipping(total))}</strong>
             </div>
 
             {step === "cart" ? (
