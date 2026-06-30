@@ -8,6 +8,7 @@ import { useCart } from "@/lib/cart";
 const links = [
   ["La maison", "/#maison"],
   ["Parfums", "/boutique"],
+  ["Accessoires", "/accessoires"],
   ["Journal", "/journal"],
   ["Ambassadrices", "/ambassadrices"],
   ["Boutiques", "/boutiques"],

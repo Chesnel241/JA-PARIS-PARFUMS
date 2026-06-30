@@ -8,9 +8,12 @@ export const productVariantInputSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const productCategorySchema = z.enum(["PARFUM", "ACCESSOIRE"]);
+
 export const productInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   slug: z.string().trim().toLowerCase().min(2).max(140).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  category: productCategorySchema.default("PARFUM"),
   description: z.string().trim().min(10).max(2_000),
   story: z.string().trim().min(10).max(10_000),
   images: z.array(z.string().trim().min(1).max(500)).min(1).max(12),

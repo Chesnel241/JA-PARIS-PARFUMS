@@ -37,6 +37,7 @@ async function main() {
     }));
     const data = {
       name: product.name,
+      category: product.category,
       description: product.description,
       story: product.story,
       images: [product.image],

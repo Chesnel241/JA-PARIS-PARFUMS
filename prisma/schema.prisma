@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  binaryTargets = ["native", "windows"]
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -12,6 +12,11 @@ enum Role {
   ADMIN
   EDITOR
   CUSTOMER
+}
+
+enum ProductCategory {
+  PARFUM
+  ACCESSOIRE
 }
 
 enum OrderStatus {
@@ -55,6 +60,7 @@ model Product {
   id          String           @id @default(cuid())
   name        String
   slug        String           @unique
+  category    ProductCategory  @default(PARFUM)
   description String
   story       String
   images      String[]
