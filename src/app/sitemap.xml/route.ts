@@ -18,6 +18,7 @@ export async function GET() {
   const urls = [
     { loc: `${baseUrl}/`, lastmod: new Date().toISOString().split("T")[0], changefreq: "daily", priority: "1.0" },
     { loc: `${baseUrl}/boutique`, lastmod: new Date().toISOString().split("T")[0], changefreq: "weekly", priority: "0.9" },
+    { loc: `${baseUrl}/accessoires`, lastmod: new Date().toISOString().split("T")[0], changefreq: "weekly", priority: "0.9" },
     { loc: `${baseUrl}/journal`, lastmod: new Date().toISOString().split("T")[0], changefreq: "weekly", priority: "0.7" },
     { loc: `${baseUrl}/ambassadrices`, lastmod: new Date().toISOString().split("T")[0], changefreq: "monthly", priority: "0.6" },
     { loc: `${baseUrl}/boutiques`, lastmod: new Date().toISOString().split("T")[0], changefreq: "monthly", priority: "0.6" },

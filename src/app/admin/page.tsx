@@ -41,7 +41,7 @@ export default async function AdminPage() {
         <header><div><p>{date}</p><h1>Bonjour, {user.name ?? "Maison JAE"}.</h1></div><Link className="admin-create-button" href="/admin/produits/nouveau"><Plus /> Nouveau produit</Link></header>
         <div className="stat-grid">{cards.map(({ label, value, detail, icon: Icon }) => <article key={label}><Icon /><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>)}</div>
         <div className="admin-table">
-          <div className="table-heading"><h2>Commandes récentes</h2><a href="#">Tout afficher</a></div>
+          <div className="table-heading"><h2>Commandes récentes</h2><Link href="/admin/commandes">Tout afficher</Link></div>
           {recentOrders.length === 0 ? <div className="admin-empty">Aucune commande pour le moment.</div> : recentOrders.map((order) => {
             const item = order.items[0];
             const row = [
