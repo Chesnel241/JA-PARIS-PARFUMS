@@ -20,15 +20,27 @@ function toCatalogProduct(product: Awaited<ReturnType<typeof prisma.product.find
 }
 
 export async function getPublicProducts(category?: ProductCategory) {
-  const products = await prisma.product.findMany({
-    where: { isActive: true, ...(category ? { category } : {}) },
-    include: catalogInclude,
-    orderBy: { createdAt: "asc" },
-  });
-  return products.filter((product) => product.variants.length > 0).map(toCatalogProduct);
+  try {
+    const products = await prisma.product.findMany({
+      where: { isActive: true, ...(category ? { category } : {}) },
+      include: catalogInclude,
+      orderBy: { createdAt: "asc" },
+    });
+    return products.filter((product) => product.variants.length > 0).map(toCatalogProduct);
+  } catch (error) {
+    // Ne jamais faire planter les pages publiques si la base est indisponible
+    // ou non migrée : on dégrade proprement en catalogue vide.
+    console.error("[catalog] getPublicProducts a échoué :", error);
+    return [];
+  }
 }
 
 export async function getPublicProduct(slug: string) {
-  const product = await prisma.product.findFirst({ where: { slug, isActive: true }, include: catalogInclude });
-  return product && product.variants.length > 0 ? toCatalogProduct(product) : null;
+  try {
+    const product = await prisma.product.findFirst({ where: { slug, isActive: true }, include: catalogInclude });
+    return product && product.variants.length > 0 ? toCatalogProduct(product) : null;
+  } catch (error) {
+    console.error("[catalog] getPublicProduct a échoué :", error);
+    return null;
+  }
 }

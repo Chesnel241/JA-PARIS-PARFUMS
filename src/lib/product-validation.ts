@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+// An image reference must be either a site-relative path ("/foo.jpg") or an
+// absolute http(s) URL. This rejects dangerous schemes such as "javascript:",
+// "data:" or "vbscript:" that could be reflected into the DOM and cause XSS.
+const imageReferenceSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine(
+    (value) => {
+      if (value.startsWith("/") && !value.startsWith("//")) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+    { message: "L'image doit être un chemin relatif (/...) ou une URL http(s)." },
+  );
+
 export const productVariantInputSchema = z.object({
   sku: z.string().trim().toUpperCase().min(3).max(64).regex(/^[A-Z0-9_-]+$/),
   volume: z.string().trim().min(1).max(32),
@@ -16,7 +37,7 @@ export const productInputSchema = z.object({
   category: productCategorySchema.default("PARFUM"),
   description: z.string().trim().min(10).max(2_000),
   story: z.string().trim().min(10).max(10_000),
-  images: z.array(z.string().trim().min(1).max(500)).min(1).max(12),
+  images: z.array(imageReferenceSchema).min(1).max(12),
   notesTop: z.array(z.string().trim().min(1).max(80)).max(12),
   notesHeart: z.array(z.string().trim().min(1).max(80)).max(12),
   notesBase: z.array(z.string().trim().min(1).max(80)).max(12),
