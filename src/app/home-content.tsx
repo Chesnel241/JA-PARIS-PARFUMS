@@ -47,7 +47,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
             animate="visible"
             variants={staggerContainer}
           >
-            <motion.p variants={fadeInUp} className="text-[#e93963] font-medium tracking-wide">
+            <motion.p variants={fadeInUp} className="text-[#c2185b] font-semibold tracking-wide">
               L&apos;éclat au-delà de la beauté
             </motion.p>
             <motion.h1 variants={fadeInUp} className="text-6xl lg:text-7xl xl:text-8xl font-serif leading-[1.05] text-stone-900 tracking-tight">
@@ -109,7 +109,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-stone-400 hover:text-stone-800 transition-colors" 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-stone-500 hover:text-stone-900 transition-colors"
           href="#collection"
         >
           <span className="text-xs tracking-widest uppercase">Explorer</span>
@@ -131,7 +131,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
         variants={staggerContainer}
         className="py-32 px-6 flex flex-col items-center text-center max-w-4xl mx-auto"
       >
-        <motion.p variants={fadeInUp} className="text-sm font-medium tracking-widest uppercase text-stone-400 mb-8">
+        <motion.p variants={fadeInUp} className="text-sm font-semibold tracking-widest uppercase text-stone-500 mb-8">
           Notre manifeste
         </motion.p>
         <motion.blockquote variants={fadeInUp} className="text-4xl lg:text-6xl font-serif leading-tight mb-8 text-stone-800">

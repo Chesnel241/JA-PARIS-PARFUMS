@@ -156,55 +156,55 @@ export default function CartPage() {
                 Continuer <ArrowRight />
               </button>
             ) : (
-              <form onSubmit={handleCheckout} style={{ display: "grid", gap: 12 }}>
-                <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                  Email
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+              <form onSubmit={handleCheckout} className="checkout-form">
+                <label className="field">
+                  <span>Email</span>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Prénom
-                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+                <div className="checkout-row">
+                  <label className="field">
+                    <span>Prénom</span>
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
                   </label>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Nom
-                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+                  <label className="field">
+                    <span>Nom</span>
+                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} required />
                   </label>
                 </div>
-                <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                  Adresse
-                  <input value={address} onChange={(e) => setAddress(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+                <label className="field">
+                  <span>Adresse</span>
+                  <input value={address} onChange={(e) => setAddress(e.target.value)} required />
                 </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Code postal
-                    <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+                <div className="checkout-row">
+                  <label className="field">
+                    <span>Code postal</span>
+                    <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required />
                   </label>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Ville
-                    <input value={city} onChange={(e) => setCity(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
-                  </label>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Pays
-                    <input value={country} onChange={(e) => setCountry(e.target.value)} required style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
-                  </label>
-                  <label style={{ display: "grid", gap: 6, fontSize: 10, fontWeight: 600, letterSpacing: ".1em", textTransform: "uppercase", color: "#5f5953" }}>
-                    Téléphone
-                    <input value={phone} onChange={(e) => setPhone(e.target.value)} style={{ width: "100%", border: "1px solid #ded9d2", background: "#faf9f7", padding: 12, fontSize: 12 }} />
+                  <label className="field">
+                    <span>Ville</span>
+                    <input value={city} onChange={(e) => setCity(e.target.value)} required />
                   </label>
                 </div>
-                {error && <p style={{ margin: 0, padding: 12, background: "#ead9d4", color: "#704037", fontSize: 10 }}>{error}</p>}
-                <div style={{ display: "flex", gap: 12 }}>
-                  <button type="button" className="primary-button" onClick={() => setStep("cart")} style={{ background: "transparent", color: "var(--ink)", flex: 1 }}>
+                <div className="checkout-row">
+                  <label className="field">
+                    <span>Pays</span>
+                    <input value={country} onChange={(e) => setCountry(e.target.value)} required />
+                  </label>
+                  <label className="field">
+                    <span>Téléphone</span>
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  </label>
+                </div>
+                {error && <p className="checkout-error">{error}</p>}
+                <div className="checkout-actions">
+                  <button type="button" className="primary-button ghost" onClick={() => setStep("cart")}>
                     Retour
                   </button>
-                  <button className="primary-button" type="submit" disabled={pending} style={{ flex: 1, color: "white" }}>
+                  <button className="primary-button" type="submit" disabled={pending} style={{ color: "white" }}>
                     {pending ? <><LoaderCircle className="spin" /> Commande…</> : <>Commander <ArrowRight /></>}
                   </button>
                 </div>
-                <small style={{ fontSize: 8, color: "#766e66", textAlign: "center" }}>Paiement sécurisé via Lydia. Votre commande sera confirmée après réception du paiement.</small>
+                <small className="checkout-note">Paiement sécurisé via Lydia. Votre commande sera confirmée après réception du paiement.</small>
               </form>
             )}
           </aside>
