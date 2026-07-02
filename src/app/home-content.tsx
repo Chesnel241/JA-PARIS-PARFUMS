@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Sparkles, User, Calendar, Play } from "lucide-react";
+import { ArrowDown, ArrowRight, Sparkles, Calendar, Play } from "lucide-react";
 import { motion, useScroll, useTransform, Variants } from "framer-motion";
 import { ProductCard } from "@/components/product-card";
 import type { Product } from "@/lib/data";
@@ -22,9 +22,23 @@ const staggerContainer: Variants = {
   }
 };
 
-export function HomeContent({ products, accessories = [] }: { products: Product[]; accessories?: Product[] }) {
+type HomeArticle = { slug: string; title: string; excerpt: string; coverImage: string; date: string };
+
+export function HomeContent({
+  products,
+  accessories = [],
+  siteImages = {},
+  articles = [],
+}: {
+  products: Product[];
+  accessories?: Product[];
+  siteImages?: Record<string, string>;
+  articles?: HomeArticle[];
+}) {
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  // Images personnalisables depuis /admin/apparence, avec repli sur les visuels d'origine.
+  const img = (key: string, fallback: string) => siteImages[key] || fallback;
 
   return (
     <div className="overflow-hidden bg-[#faf9f6]">
@@ -74,11 +88,12 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
           >
             {/* Isolated Model Image */}
             <div className="absolute inset-x-0 bottom-0 top-0 lg:top-4 z-10 pointer-events-none">
-              <Image 
-                src="/hero-nobg.png" 
-                alt="JAE Paris Model" 
-                priority 
+              <Image
+                src={img("home.hero.image", "/hero-nobg.png")}
+                alt="JAE Paris Model"
+                priority
                 fill
+                unoptimized={img("home.hero.image", "/hero-nobg.png").startsWith("/api/media/")}
                 className="object-contain object-bottom drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
               />
             </div>
@@ -91,7 +106,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
               className="absolute right-0 lg:-right-4 bottom-12 lg:bottom-32 z-20 bg-white p-3 lg:p-4 rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.12)] max-w-[240px] lg:max-w-[320px]"
             >
               <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-4 shadow-inner">
-                <Image src="/craft.jpg" alt="Video Placeholder" fill className="object-cover" />
+                <Image src={img("home.hero.card", "/craft.jpg")} alt="Création JAE Paris" fill className="object-cover" unoptimized={img("home.hero.card", "/craft.jpg").startsWith("/api/media/")} />
                 <div className="absolute inset-0 flex items-center justify-center bg-stone-900/10">
                   <div className="bg-[#e93963] text-white rounded-full p-4 shadow-lg cursor-pointer hover:scale-110 transition-transform">
                     <Play size={24} className="ml-1" fill="currentColor" />
@@ -152,7 +167,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
         className="w-full px-4 lg:px-8 mb-24"
       >
         <div className="relative w-full h-[60vh] md:h-[80vh] rounded-[3rem] overflow-hidden shadow-2xl bg-stone-900">
-          <Image src="/bestseller.jpg" alt="Parfum Signature" fill className="object-cover opacity-80" />
+          <Image src={img("home.banner.image", "/bestseller.jpg")} alt="Parfum Signature" fill className="object-cover opacity-80" unoptimized={img("home.banner.image", "/bestseller.jpg").startsWith("/api/media/")} />
           <div className="absolute inset-0 bg-stone-900/20" />
           <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6 z-10">
              <h2 className="text-6xl md:text-8xl font-serif mb-6 drop-shadow-lg">Illusion</h2>
@@ -249,7 +264,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
         className="py-24 px-6 lg:px-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
       >
         <motion.div variants={fadeInUp} className="relative aspect-[4/5] bg-stone-100 rounded-[3rem] overflow-hidden shadow-xl">
-          <Image src="/craft.jpg" alt="Savoir-faire JAE Paris" fill className="object-cover" />
+          <Image src={img("home.craft.image", "/craft.jpg")} alt="Savoir-faire JAE Paris" fill className="object-cover" unoptimized={img("home.craft.image", "/craft.jpg").startsWith("/api/media/")} />
         </motion.div>
 
         <motion.div variants={fadeInUp} className="flex flex-col gap-8">
@@ -304,13 +319,14 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
         </motion.div>
 
         <motion.div variants={fadeInUp} className="relative aspect-[4/5] bg-stone-100 rounded-[3rem] overflow-hidden lg:order-2 order-1 shadow-xl">
-          <Image src="/essence.jpg" alt="L'essence JAE Paris" fill className="object-cover" />
+          <Image src={img("home.essence.image", "/essence.jpg")} alt="L'essence JAE Paris" fill className="object-cover" unoptimized={img("home.essence.image", "/essence.jpg").startsWith("/api/media/")} />
         </motion.div>
       </motion.section>
 
-      {/* Journal Section */}
+      {/* Journal Section — articles gérés depuis /admin/articles */}
+      {articles.length > 0 && (
       <section className="py-24 px-6 lg:px-12 max-w-7xl mx-auto mb-12">
-        <motion.div 
+        <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
@@ -331,48 +347,22 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
           </div>
 
           <motion.div variants={fadeInUp} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {[
-              {
-                title: "Les secrets de fabrication de nos parfums",
-                category: "Savoir-faire",
-                author: "Benjamin",
-                date: "24 Juin, 2026",
-                image: "/craft.jpg"
-              },
-              {
-                title: "L&apos;art de choisir sa signature olfactive",
-                category: "Inspiration",
-                author: "Juliette",
-                date: "18 Juin, 2026",
-                image: "/essence.jpg"
-              },
-              {
-                title: "Dans les coulisses de la création d&apos;Illusion",
-                category: "Découverte",
-                author: "Benjamin",
-                date: "12 Juin, 2026",
-                image: "/bestseller.jpg"
-              }
-            ].map((article, index) => (
-              <Link href="/journal" key={index} className="group block bg-[#fff5f5] rounded-[2rem] overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            {articles.map((article) => (
+              <Link href={`/journal/${article.slug}`} key={article.slug} className="group block bg-[#fff5f5] rounded-[2rem] overflow-hidden hover:shadow-xl transition-shadow duration-300">
                 <div className="relative aspect-[4/3] w-full overflow-hidden">
-                  <Image src={article.image} alt={article.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <Image src={article.coverImage} alt={article.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized={article.coverImage.startsWith("/api/media/")} />
                 </div>
                 <div className="p-8">
                   <span className="inline-block px-4 py-1.5 bg-[#f0e6e6] text-stone-800 text-sm font-medium rounded-full mb-6 transition-colors group-hover:bg-white">
-                    {article.category}
+                    Journal JAE
                   </span>
                   <h3 className="text-2xl font-serif text-stone-900 mb-8 leading-snug group-hover:text-[#e93963] transition-colors">
                     {article.title}
                   </h3>
                   <div className="flex items-center gap-6 text-sm text-stone-500">
                     <div className="flex items-center gap-2">
-                      <User size={16} />
-                      <span>Par {article.author}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
                       <Calendar size={16} />
-                      <span>{article.date}</span>
+                      <span>{article.date || "À paraître"}</span>
                     </div>
                   </div>
                 </div>
@@ -381,6 +371,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
           </motion.div>
         </motion.div>
       </section>
+      )}
 
       {/* Newsletter */}
       <motion.section 
@@ -390,7 +381,7 @@ export function HomeContent({ products, accessories = [] }: { products: Product[
         variants={fadeInUp}
         className="my-24 mx-4 lg:mx-12 py-32 px-6 rounded-[3rem] flex flex-col items-center text-center relative overflow-hidden shadow-2xl bg-stone-900"
       >
-        <Image src="/newsletter.jpg" alt="Rejoignez-nous" fill className="object-cover opacity-50" />
+        <Image src={img("home.newsletter.image", "/newsletter.jpg")} alt="Rejoignez-nous" fill className="object-cover opacity-50" unoptimized={img("home.newsletter.image", "/newsletter.jpg").startsWith("/api/media/")} />
         
         <div className="relative z-10 flex flex-col items-center w-full">
           <Sparkles size={24} className="text-amber-300 mb-6" />

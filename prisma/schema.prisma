@@ -115,6 +115,24 @@ model OrderItem {
   price     Int
 }
 
+// Image téléversée depuis l'espace admin, servie via /api/media/[id].
+// Stockée en base (bytea) : aucun stockage externe à configurer.
+model MediaAsset {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
+// Réglages du site modifiables depuis l'admin (images de la page d'accueil…).
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Article {
   id          String    @id @default(cuid())
   title       String

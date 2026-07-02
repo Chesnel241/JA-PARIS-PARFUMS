@@ -3,7 +3,7 @@ import { z } from "zod";
 // An image reference must be either a site-relative path ("/foo.jpg") or an
 // absolute http(s) URL. This rejects dangerous schemes such as "javascript:",
 // "data:" or "vbscript:" that could be reflected into the DOM and cause XSS.
-const imageReferenceSchema = z
+export const imageReferenceSchema = z
   .string()
   .trim()
   .min(1)
