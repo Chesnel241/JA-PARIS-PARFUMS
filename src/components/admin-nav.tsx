@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Box, CircleDollarSign, PackageCheck, Store, Users } from "lucide-react";
+import { BookOpen, Box, CircleDollarSign, Image as ImageIcon, PackageCheck, Palette, Store, Users } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const links = [
@@ -9,6 +9,8 @@ const links = [
   ["Produits", "/admin/produits", Box],
   ["Commandes", "/admin/commandes", PackageCheck],
   ["Articles", "/admin/articles", BookOpen],
+  ["Médias", "/admin/medias", ImageIcon],
+  ["Apparence", "/admin/apparence", Palette],
   ["Ambassadrices", "/admin/ambassadrices", Users],
   ["Boutiques", "/admin/boutiques", Store],
 ] as const;

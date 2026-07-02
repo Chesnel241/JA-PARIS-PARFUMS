@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
+import { getPublishedArticles } from "@/lib/article-service";
 
+// Liste publique (lecture seule) des articles publiés du Journal.
 export async function GET() {
-  return NextResponse.json([
-    { id: 1, title: "Nos secrets de fabrication", slug: "secrets-fabrication" },
-    { id: 2, title: "L'art de choisir sa signature", slug: "choisir-signature" },
-    { id: 3, title: "Dans les coulisses d'Illusion", slug: "coulisses-illusion" },
-  ]);
+  const articles = await getPublishedArticles();
+  return NextResponse.json({
+    articles: articles.map((article) => ({
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      coverImage: article.coverImage,
+      publishedAt: article.publishedAt,
+    })),
+  });
 }
