@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, LoaderCircle, Plus, Save, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Plus, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { ProductImagesField } from "@/components/product-images-field";
 
 type ProductCategoryValue = "PARFUM" | "ACCESSOIRE";
 type VariantDraft = { sku: string; volume: string; price: string; stock: string; isActive: boolean };
@@ -25,9 +26,7 @@ type ProductDraft = {
 const emptyVariant: VariantDraft = { sku: "", volume: "50 ml", price: "135", stock: "0", isActive: true };
 
 function commaList(values: string[]) { return values.join(", "); }
-function lines(values: string[]) { return values.join("\n"); }
 function splitComma(value: string) { return value.split(",").map((item) => item.trim()).filter(Boolean); }
-function splitLines(value: string) { return value.split("\n").map((item) => item.trim()).filter(Boolean); }
 function slugify(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
 
 export function ProductAdminForm({ product }: { product?: ProductDraft }) {
@@ -40,7 +39,7 @@ export function ProductAdminForm({ product }: { product?: ProductDraft }) {
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
   const [description, setDescription] = useState(product?.description ?? "");
   const [story, setStory] = useState(product?.story ?? "");
-  const [images, setImages] = useState(lines(product?.images ?? ["/parfum-noir.svg"]));
+  const [images, setImages] = useState<string[]>(product?.images?.length ? product.images : []);
   const [notesTop, setNotesTop] = useState(commaList(product?.notesTop ?? []));
   const [notesHeart, setNotesHeart] = useState(commaList(product?.notesHeart ?? []));
   const [notesBase, setNotesBase] = useState(commaList(product?.notesBase ?? []));
@@ -48,29 +47,6 @@ export function ProductAdminForm({ product }: { product?: ProductDraft }) {
   const [variants, setVariants] = useState<VariantDraft[]>(product?.variants.map((variant) => ({ ...variant, price: (variant.price / 100).toFixed(0), stock: String(variant.stock) })) ?? [{ ...emptyVariant }]);
   const title = useMemo(() => product ? `Modifier ${product.name}` : "Nouveau produit", [product]);
   const isParfum = category === "PARFUM";
-  const uploadInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  async function uploadImage(file: File) {
-    setError("");
-    setUploading(true);
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      const response = await fetch("/api/admin/media", { method: "POST", body });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setError(data.error ?? "Téléversement impossible.");
-        return;
-      }
-      setImages((current) => (current.trim() ? `${current.trimEnd()}\n${data.asset.url}` : data.asset.url));
-    } catch {
-      setError("Téléversement impossible. Vérifiez votre connexion.");
-    } finally {
-      setUploading(false);
-      if (uploadInputRef.current) uploadInputRef.current.value = "";
-    }
-  }
 
   function updateVariant(index: number, patch: Partial<VariantDraft>) {
     setVariants((current) => current.map((variant, variantIndex) => variantIndex === index ? { ...variant, ...patch } : variant));
@@ -79,9 +55,13 @@ export function ProductAdminForm({ product }: { product?: ProductDraft }) {
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    if (images.length === 0) {
+      setError("Ajoutez au moins une image (téléversement ou adresse).");
+      return;
+    }
     const payload = {
       name, slug, category, description, story,
-      images: splitLines(images),
+      images,
       notesTop: isParfum ? splitComma(notesTop) : [],
       notesHeart: isParfum ? splitComma(notesHeart) : [],
       notesBase: isParfum ? splitComma(notesBase) : [],
@@ -112,7 +92,7 @@ export function ProductAdminForm({ product }: { product?: ProductDraft }) {
         <section className="admin-form-card"><h2>Identité</h2><label>Catégorie<select value={category} onChange={(event) => setCategory(event.target.value as ProductCategoryValue)}><option value="PARFUM">Parfum</option><option value="ACCESSOIRE">Accessoire</option></select></label><label>Nom du produit<input value={name} onChange={(event) => { setName(event.target.value); if (!slugTouched) setSlug(slugify(event.target.value)); }} required minLength={2} /></label><label>Slug<input value={slug} onChange={(event) => { setSlugTouched(true); setSlug(slugify(event.target.value)); }} required /></label><label>Description courte<textarea value={description} onChange={(event) => setDescription(event.target.value)} required minLength={10} rows={4} /></label><label>Histoire du parfum<textarea value={story} onChange={(event) => setStory(event.target.value)} required minLength={10} rows={8} /></label></section>
         <section className="admin-form-card"><div className="form-card-heading"><h2>Contenances</h2><button type="button" onClick={() => setVariants((current) => [...current, { ...emptyVariant, sku: "", volume: "" }])}><Plus /> Ajouter</button></div>{variants.map((variant, index) => <div className="variant-admin-row" key={index}><label>SKU<input value={variant.sku} onChange={(event) => updateVariant(index, { sku: event.target.value.toUpperCase() })} required /></label><label>Contenance<input value={variant.volume} onChange={(event) => updateVariant(index, { volume: event.target.value })} required /></label><label>Prix (€)<input value={variant.price} onChange={(event) => updateVariant(index, { price: event.target.value })} type="number" min="0" step="0.01" required /></label><label>Stock<input value={variant.stock} onChange={(event) => updateVariant(index, { stock: event.target.value })} type="number" min="0" required /></label><label className="checkbox-label"><input type="checkbox" checked={variant.isActive} onChange={(event) => updateVariant(index, { isActive: event.target.checked })} /> Active</label>{variants.length > 1 && <button className="remove-variant" type="button" aria-label="Supprimer la variante" onClick={() => setVariants((current) => current.filter((_, variantIndex) => variantIndex !== index))}><Trash2 /></button>}</div>)}</section>
       </div>
-      <aside className="product-form-aside"><section className="admin-form-card"><h2>Publication</h2><label className="publish-toggle"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /><span>{isActive ? "Publié dans la boutique" : "Brouillon invisible"}</span></label></section><section className="admin-form-card"><div className="form-card-heading"><h2>Images</h2><button type="button" disabled={uploading} onClick={() => uploadInputRef.current?.click()}>{uploading ? <><LoaderCircle className="spin" /> Envoi…</> : <><Upload /> Téléverser</>}</button></div><input ref={uploadInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadImage(file); }} /><label>Une adresse par ligne<textarea value={images} onChange={(event) => setImages(event.target.value)} rows={5} required /></label></section>{isParfum && <section className="admin-form-card"><h2>Notes olfactives</h2><label>Tête<input value={notesTop} onChange={(event) => setNotesTop(event.target.value)} placeholder="Safran, Bergamote" /></label><label>Cœur<input value={notesHeart} onChange={(event) => setNotesHeart(event.target.value)} /></label><label>Fond<input value={notesBase} onChange={(event) => setNotesBase(event.target.value)} /></label></section>}{error && <p className="admin-form-error">{error}</p>}<button className="primary-button" disabled={pending}>{pending ? <><LoaderCircle className="spin" /> Enregistrement…</> : <><Save /> Enregistrer</>}</button></aside>
+      <aside className="product-form-aside"><section className="admin-form-card"><h2>Publication</h2><label className="publish-toggle"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /><span>{isActive ? "Publié dans la boutique" : "Brouillon invisible"}</span></label></section><section className="admin-form-card"><h2>Images du produit</h2><ProductImagesField images={images} onChange={setImages} /></section>{isParfum && <section className="admin-form-card"><h2>Notes olfactives</h2><label>Tête<input value={notesTop} onChange={(event) => setNotesTop(event.target.value)} placeholder="Safran, Bergamote" /></label><label>Cœur<input value={notesHeart} onChange={(event) => setNotesHeart(event.target.value)} /></label><label>Fond<input value={notesBase} onChange={(event) => setNotesBase(event.target.value)} /></label></section>}{error && <p className="admin-form-error">{error}</p>}<button className="primary-button" disabled={pending}>{pending ? <><LoaderCircle className="spin" /> Enregistrement…</> : <><Save /> Enregistrer</>}</button></aside>
     </form>
   </div>;
 }
