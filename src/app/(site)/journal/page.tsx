@@ -1,35 +1,44 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { getPublishedArticles } from "@/lib/article-service";
-
-export const metadata = { title: "Journal" };
+import { Reveal, Stagger, StaggerItem } from "@/components/motion";
+import { ArticleCard } from "@/components/site/article-card";
+import { EmptyState } from "@/components/site/empty-state";
+import { PageIntro } from "@/components/site/page-intro";
+import { pageMetadata } from "@/components/site/seo";
 
 export const dynamic = "force-dynamic";
 
+export function generateMetadata() {
+  return pageMetadata({
+    title: "Journal",
+    description: "Le Journal JAE Paris : coulisses de création, matières et conseils pour choisir son parfum.",
+    path: "/journal",
+  });
+}
+
 export default async function JournalPage() {
   const articles = await getPublishedArticles();
+  const [featured, ...rest] = articles;
+
   return (
-    <div className="page-shell editorial-page">
-      <header className="page-intro">
-        <p className="eyebrow">Journal JAE</p>
-        <h1>Des histoires<br /><em>à respirer.</em></h1>
-      </header>
-      {articles.length === 0 ? (
-        <div className="empty-cart"><p>Les premières histoires arrivent très bientôt.</p></div>
+    <div className="page-shell journal-page">
+      <PageIntro eyebrow="Journal" title="Histoires de la maison" />
+      {!featured ? (
+        <EmptyState title="Les premières histoires arrivent bientôt." action={{ href: "/boutique", label: "Découvrir les parfums" }} />
       ) : (
-        <div className="article-list">
-          {articles.map((article, index) => (
-            <article key={article.id}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <div>
-                <p className="eyebrow">{article.publishedAt ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(article.publishedAt) : "Journal"}</p>
-                <h2><Link href={`/journal/${article.slug}`}>{article.title}</Link></h2>
-                <p>{article.excerpt}</p>
-              </div>
-              <Link href={`/journal/${article.slug}`} aria-label={`Lire ${article.title}`}><ArrowUpRight /></Link>
-            </article>
-          ))}
-        </div>
+        <>
+          <Reveal className="journal-featured">
+            <ArticleCard article={featured} featured headingLevel="h2" priority sizes="(min-width: 900px) 58vw, 100vw" />
+          </Reveal>
+          {rest.length > 0 ? (
+            <Stagger as="ul" className="article-grid" label="Autres articles">
+              {rest.map((article) => (
+                <StaggerItem as="li" key={article.id}>
+                  <ArticleCard article={article} headingLevel="h2" />
+                </StaggerItem>
+              ))}
+            </Stagger>
+          ) : null}
+        </>
       )}
     </div>
   );
