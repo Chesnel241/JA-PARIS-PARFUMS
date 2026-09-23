@@ -86,6 +86,24 @@ async function main() {
     });
   }
 
+  // Ambassadrices et boutiques de démonstration : créées une seule fois,
+  // ensuite entièrement gérées depuis l'admin (/admin/ambassadrices, /admin/boutiques).
+  if ((await prisma.ambassador.count()) === 0) {
+    await prisma.ambassador.createMany({
+      data: [
+        { name: "Inès", role: "Photographe", photo: "/essence.jpg", description: "Elle collectionne les lumières fugaces et porte Or Solaire comme une seconde peau.", sortOrder: 1 },
+        { name: "Aïcha", role: "Architecte", photo: "/craft.jpg", description: "Son élégance est précise, son sillage ne l'est jamais. Nuit Souveraine lui ressemble.", sortOrder: 2 },
+        { name: "Clara", role: "Danseuse", photo: "/newsletter.jpg", description: "Libre, instinctive, intensément présente. Rose Insolente était une évidence.", sortOrder: 3 },
+      ],
+    });
+  }
+
+  if ((await prisma.store.count()) === 0) {
+    await prisma.store.create({
+      data: { name: "Maison JAE · Paris", address: "24, rue du Bac", city: "75007 Paris", country: "France", phone: "+33 1 84 80 20 24", openingHours: "Lun–Sam · 10h30–19h", image: "/bestseller.jpg", sortOrder: 1 },
+    });
+  }
+
   console.info(`Administrateur initialisé : ${email}`);
   console.info(`${products.length} produits de démonstration synchronisés.`);
   console.info(`${demoArticles.length} articles de démonstration synchronisés.`);

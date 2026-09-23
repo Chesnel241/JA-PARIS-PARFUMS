@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 // Emplacements d'images du site modifiables depuis l'admin (/admin/apparence).
 // Chaque emplacement a une valeur par défaut : le site fonctionne sans réglage.
 export const IMAGE_SLOTS = [
-  { key: "home.hero.image", label: "Accueil — image du héro", description: "Grande image de la mannequin en haut de la page d'accueil (PNG détouré conseillé).", defaultValue: "/hero-nobg.png" },
-  { key: "home.hero.card", label: "Accueil — carte flottante", description: "Petite carte visuelle posée sur le héro.", defaultValue: "/craft.jpg" },
-  { key: "home.banner.image", label: "Accueil — bannière Illusion", description: "Grande bannière pleine largeur au centre de la page d'accueil.", defaultValue: "/bestseller.jpg" },
-  { key: "home.craft.image", label: "Accueil — le geste (savoir-faire)", description: "Image de la section « La matière avant tout ».", defaultValue: "/craft.jpg" },
-  { key: "home.essence.image", label: "Accueil — l'inspiration", description: "Image de la section « L'art de sublimer votre essence ».", defaultValue: "/essence.jpg" },
-  { key: "home.newsletter.image", label: "Accueil — le cercle JAE", description: "Image de fond du bloc newsletter en bas de page.", defaultValue: "/newsletter.jpg" },
+  { key: "home.hero.image", label: "Accueil — héro", description: "Grande image du haut de page (PNG détouré ou photo portrait).", defaultValue: "/hero-nobg.png" },
+  { key: "home.hero.card", label: "Accueil — tuile Parfums", description: "Image de la tuile d'entrée « Parfums » (portrait 4:5).", defaultValue: "/hero.jpg" },
+  { key: "home.banner.image", label: "Accueil — bannière signature", description: "Grande bannière au centre de l'accueil ; sert aussi d'image de partage.", defaultValue: "/bestseller.jpg" },
+  { key: "home.craft.image", label: "Accueil — tuile Accessoires", description: "Image de la tuile d'entrée « Accessoires » (portrait 4:5).", defaultValue: "/craft.jpg" },
+  { key: "home.essence.image", label: "Accueil — tuile Devenir ambassadrice", description: "Image de la tuile « Devenir ambassadrice » et du formulaire de candidature.", defaultValue: "/essence.jpg" },
+  { key: "home.newsletter.image", label: "Accueil — newsletter", description: "Image du bloc newsletter en bas de page.", defaultValue: "/newsletter.jpg" },
 ] as const;
 
 export type ImageSlotKey = (typeof IMAGE_SLOTS)[number]["key"];

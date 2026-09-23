@@ -1,30 +1,49 @@
-import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { Role } from "@prisma/client";
-import { AdminShell } from "@/components/admin-shell";
-import { ProductAdminActions } from "@/components/product-admin-actions";
-import { requireStaff } from "@/lib/auth-guard";
-import { formatPrice } from "@/lib/data";
+import { ProductsTable, type ProductRow } from "@/components/admin/products-table";
+import { requireAdminStaff } from "@/components/admin/staff";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
+import { LOW_STOCK_THRESHOLD } from "@/components/admin/labels";
 import { listAdminProducts } from "@/lib/product-service";
 
-export const metadata = { title: "Produits · Maison" };
+export const metadata = { title: "Produits" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
-  const [user, products] = await Promise.all([requireStaff(), listAdminProducts()]);
-  return <AdminShell user={user}>
-    <header className="admin-content-header"><div><p>Catalogue</p><h1>Le catalogue.</h1></div><Link className="admin-create-button" href="/admin/produits/nouveau"><Plus /> Nouveau produit</Link></header>
-    <div className="admin-product-list">
-      <div className="admin-product-list-head"><span>Produit</span><span>Variantes</span><span>Stock</span><span>Statut</span><span>Actions</span></div>
-      {products.length === 0 ? <div className="admin-empty">Aucun parfum. La page blanche, mais avec un meilleur sillage.</div> : products.map((product) => {
-        const stock = product.variants.reduce((sum, variant) => sum + variant.stock, 0);
-        const startingPrice = product.variants[0]?.price;
-        return <article className="admin-product-row" key={product.id}>
-          <div className="admin-product-identity"><div className="admin-product-thumb">{product.images[0] && <Image src={product.images[0]} alt="" width={64} height={80} />}</div><div><Link href={`/admin/produits/${product.id}`}>{product.name}</Link><small>{product.category === "ACCESSOIRE" ? "Accessoire" : "Parfum"} · {startingPrice === undefined ? "Sans prix" : `Dès ${formatPrice(startingPrice)}`} · /{product.slug}</small></div></div>
-          <span>{product.variants.length}</span><span className={stock <= 5 ? "low-stock" : ""}>{stock}</span><span><i className={product.isActive ? "published" : "draft"} />{product.isActive ? "Publié" : "Brouillon"}</span>
-          <ProductAdminActions id={product.id} name={product.name} isActive={product.isActive} canDelete={user.role === Role.ADMIN} />
-        </article>;
-      })}
-    </div>
-  </AdminShell>;
+  const [user, products] = await Promise.all([requireAdminStaff(), listAdminProducts()]);
+  const rows: ProductRow[] = products.map((product) => {
+    const sellable = product.variants.filter((variant) => variant.isActive);
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      category: product.category,
+      image: product.images[0] ?? null,
+      isActive: product.isActive,
+      minPrice: product.variants.length ? Math.min(...product.variants.map((variant) => variant.price)) : null,
+      stock: sellable.reduce((sum, variant) => sum + variant.stock, 0),
+      variantCount: product.variants.length,
+      lowVariants: sellable.filter((variant) => variant.stock <= LOW_STOCK_THRESHOLD).length,
+      skus: product.variants.map((variant) => variant.sku),
+    };
+  });
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Ventes"
+        title="Produits"
+        description="Parfums et accessoires : prix, stock, images et publication."
+        actions={<Link className="adm-btn adm-btn--primary" href="/admin/produits/nouveau"><Plus aria-hidden /> Nouveau produit</Link>}
+      />
+      {rows.length === 0 ? (
+        <div className="adm-card">
+          <EmptyState icon={Package} title="Votre catalogue est vide" description="Ajoutez votre premier parfum ou accessoire : il restera en brouillon tant que vous ne le publiez pas." action={<Link className="adm-btn adm-btn--primary" href="/admin/produits/nouveau"><Plus aria-hidden /> Ajouter un produit</Link>} />
+        </div>
+      ) : (
+        <ProductsTable products={rows} canDelete={user.role === Role.ADMIN} />
+      )}
+    </>
+  );
 }

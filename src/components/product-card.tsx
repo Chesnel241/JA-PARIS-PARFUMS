@@ -1,65 +1,67 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import type { Product } from "@/lib/data";
 import { formatPrice } from "@/lib/data";
+import { imageFit, isApiMedia } from "@/components/site/media";
 
-export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
+export const PRODUCT_CARD_SIZES = "(min-width: 1200px) 25vw, (min-width: 900px) 33vw, 50vw";
+
+/**
+ * Carte produit « image d'abord ». Composant serveur (aucun JS client) :
+ * survol et fondu de la seconde image sont gérés en CSS.
+ */
+export function ProductCard({ product, sizes = PRODUCT_CARD_SIZES, headingLevel = "h3", priority = false }: {
+  product: Product;
+  /** Conservé pour compatibilité : l'échelonnement est géré par la grille. */
+  index?: number;
+  sizes?: string;
+  headingLevel?: "h2" | "h3";
+  priority?: boolean;
+}) {
+  const prices = product.variants.map((variant) => variant.price);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const hasRange = new Set(prices).size > 1;
+  const soldOut = product.variants.reduce((sum, variant) => sum + variant.stock, 0) <= 0;
+  const primary = product.images[0] ?? product.image;
+  const secondary = product.images[1];
+  const Heading = headingLevel;
+  const volumes = product.category === "PARFUM" ? product.variants.map((variant) => variant.volume).join(" · ") : null;
+
   return (
-    <motion.article 
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-100px" }}
-      transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
-      className="group relative flex flex-col bg-amber-50/50 rounded-[2rem] overflow-hidden hover:shadow-xl transition-shadow duration-500"
-    >
-      <Link 
-        className="relative flex items-center justify-center p-8 aspect-[4/5] bg-opacity-30 rounded-t-[2rem] overflow-hidden" 
-        href={`/produit/${product.slug}`} 
-        style={{ backgroundColor: `${product.accent}15` }}
-      >
-        <span className="absolute top-6 left-6 text-sm font-medium opacity-50 font-serif">0{index + 1}</span>
-        
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full h-full flex items-center justify-center"
-        >
-          <Image 
-            src={product.image} 
-            alt={`Flacon ${product.name}`} 
-            width={380} 
-            height={480} 
-            className="object-contain drop-shadow-2xl"
+    <article className="product-card" data-sold-out={soldOut ? "" : undefined}>
+      <Link href={`/produit/${product.slug}`} className="product-card-link">
+        <div className="product-card-media" data-has-alt={secondary ? "" : undefined}>
+          <Image
+            src={primary}
+            alt={product.name}
+            fill
+            sizes={sizes}
+            priority={priority}
+            unoptimized={isApiMedia(primary)}
+            className={`product-card-img fit-${imageFit(primary)}`}
           />
-        </motion.div>
-
-        {/* Hover Add to cart sliding bar */}
-        <motion.div 
-          className="absolute bottom-0 left-0 right-0 bg-stone-900 text-white p-4 flex justify-center items-center translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"
-          style={{ color: "white" }}
-        >
-          <span className="text-sm tracking-widest uppercase font-medium">Ajouter au panier</span>
-        </motion.div>
-      </Link>
-      
-      <div className="p-6 flex flex-col gap-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-xl font-serif">
-              <Link href={`/produit/${product.slug}`} className="hover:opacity-70 transition-opacity">
-                {product.name}
-              </Link>
-            </h3>
-            <p className="text-sm text-stone-500 mt-1">{product.subtitle}</p>
-          </div>
-          <span className="text-sm font-medium whitespace-nowrap bg-white/60 px-3 py-1 rounded-full">
-            {formatPrice(product.variants[0].price)}
-          </span>
+          {secondary ? (
+            <Image
+              src={secondary}
+              alt=""
+              aria-hidden
+              fill
+              sizes={sizes}
+              unoptimized={isApiMedia(secondary)}
+              className={`product-card-img is-alt fit-${imageFit(secondary)}`}
+            />
+          ) : null}
+          {soldOut ? <span className="product-card-badge">Épuisé</span> : null}
         </div>
-      </div>
-    </motion.article>
+        <div className="product-card-body">
+          <Heading className="product-card-title">{product.name}</Heading>
+          {volumes ? <p className="product-card-meta">{volumes}</p> : null}
+          <p className="product-card-price">
+            {soldOut ? <span className="sr-only">Épuisé — </span> : null}
+            {hasRange ? "À partir de " : ""}{formatPrice(minPrice)}
+          </p>
+        </div>
+      </Link>
+    </article>
   );
 }

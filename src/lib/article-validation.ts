@@ -1,4 +1,5 @@
 import { z } from "zod";
+import "@/lib/zod-fr";
 import { imageReferenceSchema } from "@/lib/product-validation";
 
 export const articleInputSchema = z.object({

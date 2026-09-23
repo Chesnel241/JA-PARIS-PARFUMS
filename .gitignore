@@ -10,3 +10,10 @@ __MACOSX
 prisma/dev.db
 tsconfig.tsbuildinfo
 
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/tests/.auth/
+dev.log

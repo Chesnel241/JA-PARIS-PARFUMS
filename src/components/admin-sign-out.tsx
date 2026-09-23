@@ -1,13 +1,23 @@
-import { LogOut } from "lucide-react";
-import { signOut } from "@/auth";
+"use client";
+
+import { useFormStatus } from "react-dom";
+import { LoaderCircle, LogOut } from "lucide-react";
+import { signOutAction } from "@/components/admin/actions";
+
+function SignOutButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button className="adm-nav-link adm-signout" type="submit" disabled={pending} aria-busy={pending || undefined}>
+      {pending ? <LoaderCircle className="adm-spin" aria-hidden /> : <LogOut aria-hidden />}
+      {pending ? "Déconnexion…" : "Se déconnecter"}
+    </button>
+  );
+}
 
 export function AdminSignOut() {
   return (
-    <form action={async () => {
-      "use server";
-      await signOut({ redirectTo: "/connexion-admin" });
-    }}>
-      <button className="admin-sign-out" type="submit"><LogOut /> Se déconnecter</button>
+    <form action={signOutAction}>
+      <SignOutButton />
     </form>
   );
 }

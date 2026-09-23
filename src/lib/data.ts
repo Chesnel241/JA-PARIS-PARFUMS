@@ -7,13 +7,15 @@ export type Product = {
   subtitle: string;
   description: string;
   story: string;
+  // Image principale (= images[0]) et galerie complète.
   image: string;
+  images: string[];
   accent: string;
   notes: { top: string[]; heart: string[]; base: string[] };
   variants: { volume: string; price: number; stock: number }[];
 };
 
-export const products: Product[] = [
+const demoProducts: Omit<Product, "images">[] = [
   {
     slug: "nuit-souveraine",
     name: "Nuit Souveraine",
@@ -75,6 +77,8 @@ export const products: Product[] = [
     variants: [{ volume: "Taille unique", price: 9500, stock: 10 }],
   },
 ];
+
+export const products: Product[] = demoProducts.map((product) => ({ ...product, images: [product.image] }));
 
 export const formatPrice = (cents: number) =>
   new Intl.NumberFormat("fr-FR", {
