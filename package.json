@@ -18,7 +18,9 @@
     "test:crud": "node --env-file=.env scripts/test-product-crud.mjs",
     "docker:build": "docker compose -f docker-compose.prod.yml build",
     "docker:up": "docker compose -f docker-compose.prod.yml up -d",
-    "docker:down": "docker compose -f docker-compose.prod.yml down"
+    "docker:down": "docker compose -f docker-compose.prod.yml down",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
@@ -34,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22",
     "@types/react": "^19",
