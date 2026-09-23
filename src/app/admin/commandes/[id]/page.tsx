@@ -40,7 +40,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   const [, order] = await Promise.all([requireAdminStaff(), getAdminOrder(id)]);
   if (!order) notFound();
 
-  const reference = orderReference(order.id);
+  const reference = orderReference(order);
   const address = readAddress(order.deliveryAddress);
   const subtotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shipping = Math.max(0, order.totalAmount - subtotal);

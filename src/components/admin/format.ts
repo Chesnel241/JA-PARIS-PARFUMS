@@ -30,8 +30,9 @@ export function formatBytes(bytes: number) {
   return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
 }
 
-export function orderReference(id: string) {
-  return `#${id.slice(-8).toUpperCase()}`;
+// Même référence que celle montrée au client et à reporter dans le paiement Lydia.
+export function orderReference(order: { id: string; reference?: string | null }) {
+  return order.reference ?? `JAE-${order.id.slice(-8).toUpperCase()}`;
 }
 
 export function plural(count: number, singular: string, pluralForm = `${singular}s`) {

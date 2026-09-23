@@ -77,7 +77,7 @@ export default async function AdminDashboardPage() {
                   <li key={order.id}>
                     <Link className="adm-list-item adm-list-item--stack" href={`/admin/commandes/${order.id}`}>
                       <span className="adm-list-item-text">
-                        <strong>{orderReference(order.id)} · {customer}</strong>
+                        <strong>{orderReference(order)} · {customer}</strong>
                         <span>{formatDateTime(order.createdAt)} · {plural(order.items.reduce((sum, item) => sum + item.quantity, 0), "article")}</span>
                       </span>
                       <span className="adm-list-item-end">

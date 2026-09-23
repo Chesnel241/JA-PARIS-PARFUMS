@@ -1,12 +1,9 @@
 "use server";
 
 import { headers } from "next/headers";
-import { loginIdentifier } from "@/lib/login-rate-limit";
+import { MAX_ATTEMPTS, WINDOW_MS, loginIdentifier } from "@/lib/login-rate-limit";
 import { prisma } from "@/lib/prisma";
 
-// Doit rester aligné sur src/lib/login-rate-limit.ts (5 essais / 15 min).
-const MAX_ATTEMPTS = 5;
-const WINDOW_MS = 15 * 60 * 1000;
 
 export type LoginThrottle = { blocked: boolean; retryInMinutes: number; remaining: number | null };
 

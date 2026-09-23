@@ -28,7 +28,7 @@ const filters: { key: string; label: string; where?: Prisma.OrderWhereInput }[] 
 function searchWhere(raw: string): Prisma.OrderWhereInput | undefined {
   const q = raw.trim().slice(0, 100);
   if (!q) return undefined;
-  const reference = q.replace(/^#/, "").toLowerCase();
+  const reference = q.replace(/^#/, "").replace(/^jae-/i, "").toLowerCase();
   const capitalized = q.charAt(0).toUpperCase() + q.slice(1).toLowerCase();
   const nameMatches = [q, capitalized].flatMap((value) => [
     { deliveryAddress: { path: ["lastName"], string_contains: value } },
@@ -37,7 +37,7 @@ function searchWhere(raw: string): Prisma.OrderWhereInput | undefined {
   return {
     OR: [
       { email: { contains: q, mode: "insensitive" } },
-      ...(reference.length >= 4 ? [{ id: { endsWith: reference } }] : []),
+      ...(reference.length >= 4 ? [{ id: { endsWith: reference } }, { reference: { contains: reference, mode: "insensitive" as const } }] : []),
       { items: { some: { name: { contains: q, mode: "insensitive" } } } },
       ...nameMatches,
     ],
@@ -113,7 +113,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             </thead>
             <tbody>
               {orders.map((order) => {
-                const reference = orderReference(order.id);
+                const reference = orderReference(order);
                 const payment = PAYMENT_STATUS[order.paymentStatus];
                 const status = ORDER_STATUS[order.status];
                 const quantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
