@@ -296,7 +296,7 @@
 .article-grid { display: grid; gap: var(--space-7) clamp(16px, 2vw, 32px); margin: 0; padding: 0; list-style: none; }
 .article-grid > li { min-width: 0; }
 @media (min-width: 760px) { .article-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1024px) { .article-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .article-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .article-grid.is-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .article-card-link { display: block; }
 .article-card-media { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--warm); }
 .article-card-img { object-fit: cover; transition: transform 1s var(--ease-out); }
@@ -329,12 +329,14 @@
 .article-cover img { object-fit: cover; }
 .article-body { max-width: var(--measure); margin: 0 auto; }
 .article-body p { margin: 0 0 1.4em; color: var(--ink-soft); font-size: 17px; line-height: 1.8; }
-.article-body p:first-child::first-letter { float: left; margin: 0.08em 0.1em 0 0; font-family: var(--font-display), Georgia, serif; font-size: 4.2em; line-height: 0.8; color: var(--ink); }
 .article-footer { max-width: var(--measure); margin: var(--space-7) auto 0; padding-top: var(--space-5); border-top: 1px solid var(--line); }
 .article-next { margin-top: var(--section-y); padding-top: var(--space-8); border-top: 1px solid var(--line); }
 
 /* ---------- Ambassadrices ---------- */
+.ambassadors-page { padding-bottom: 0; }
 .ambassadors-section { margin-bottom: var(--section-y); }
+/* Sur la page du formulaire, le rappel « Devenir ambassadrice » du pied de page ferait doublon. */
+.site-shell:has(#candidature) .footer-cta { display: none; }
 .ambassador-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-7) clamp(12px, 2vw, 32px); margin: 0; padding: 0; list-style: none; }
 .ambassador-grid > li { min-width: 0; }
 @media (min-width: 900px) { .ambassador-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

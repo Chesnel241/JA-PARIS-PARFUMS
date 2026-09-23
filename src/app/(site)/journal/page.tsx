@@ -30,7 +30,7 @@ export default async function JournalPage() {
             <ArticleCard article={featured} featured headingLevel="h2" priority sizes="(min-width: 900px) 58vw, 100vw" />
           </Reveal>
           {rest.length > 0 ? (
-            <Stagger as="ul" className="article-grid" label="Autres articles">
+            <Stagger as="ul" className={`article-grid${rest.length === 2 ? " is-pair" : ""}`} label="Autres articles">
               {rest.map((article) => (
                 <StaggerItem as="li" key={article.id}>
                   <ArticleCard article={article} headingLevel="h2" />
