@@ -1,13 +1,31 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
+import { SITE_NAME, getSiteUrl } from "@/components/site/seo";
 import "./globals.css";
 
-const display = Cormorant_Garamond({ subsets: ["latin"], variable: "--font-display", weight: ["400", "500", "600"] });
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const display = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "JAE Paris — Parfums de caractère", template: "%s — JAE Paris" },
-  description: "Maison parisienne de parfums de caractère. Découvrez la collection JAE Paris.",
+  metadataBase: new URL(getSiteUrl()),
+  title: { default: `${SITE_NAME} — Maison de parfum parisienne`, template: `%s — ${SITE_NAME}` },
+  description: "Parfums et bijoux en laiton doré, composés à Paris. Livraison offerte dès 50 €.",
+  applicationName: SITE_NAME,
+  formatDetection: { telephone: false, email: false, address: false },
+  openGraph: { type: "website", locale: "fr_FR", siteName: SITE_NAME },
+  twitter: { card: "summary_large_image" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#fbf8f3",
+  width: "device-width",
+  initialScale: 1,
 };
 
 // Layout racine minimal : la boutique ((site)) et l'administration (admin,
