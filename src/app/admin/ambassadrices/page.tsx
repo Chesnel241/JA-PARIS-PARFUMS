@@ -1,19 +1,33 @@
-import { AdminShell } from "@/components/admin-shell";
-import { requireStaff } from "@/lib/auth-guard";
+import Link from "next/link";
+import { Inbox, Plus, Sparkles } from "lucide-react";
+import { CommunityBoard } from "@/components/admin/community";
+import { requireAdminStaff } from "@/components/admin/staff";
+import { EmptyState, PageHeader } from "@/components/admin/ui";
+import { countNewApplications, listAdminAmbassadors } from "@/lib/community-service";
 
-export const metadata = { title: "Ambassadrices · Maison" };
+export const metadata = { title: "Ambassadrices" };
+export const dynamic = "force-dynamic";
 
 export default async function AdminAmbassadorsPage() {
-  const user = await requireStaff();
+  const [, ambassadors, newApplications] = await Promise.all([requireAdminStaff(), listAdminAmbassadors(), countNewApplications()]);
   return (
-    <AdminShell user={user}>
-      <header className="admin-content-header">
-        <div>
-          <p>Communauté</p>
-          <h1>Les ambassadrices.</h1>
+    <>
+      <PageHeader
+        eyebrow="Communauté"
+        title="Ambassadrices"
+        description="Les visages de la maison, affichés sur la page « Ambassadrices » dans l'ordre ci-dessous."
+        actions={<>
+          <Link className="adm-btn adm-btn--secondary" href="/admin/candidatures"><Inbox aria-hidden /> Candidatures{newApplications > 0 ? ` (${newApplications})` : ""}</Link>
+          <Link className="adm-btn adm-btn--primary" href="/admin/ambassadrices/nouvelle"><Plus aria-hidden /> Ajouter</Link>
+        </>}
+      />
+      {ambassadors.length === 0 ? (
+        <div className="adm-card">
+          <EmptyState icon={Sparkles} title="Aucune ambassadrice" description="Présentez les femmes qui incarnent JAE : photo, métier, quelques mots et leur Instagram." action={<Link className="adm-btn adm-btn--primary" href="/admin/ambassadrices/nouvelle"><Plus aria-hidden /> Ajouter une ambassadrice</Link>} />
         </div>
-      </header>
-      <div className="admin-empty">Le CRUD des ambassadrices arrive dans la prochaine itération.</div>
-    </AdminShell>
+      ) : (
+        <CommunityBoard kind="ambassador" items={ambassadors.map((item) => ({ id: item.id, name: item.name, role: item.role, photo: item.photo, description: item.description, instagram: item.instagram, isActive: item.isActive, sortOrder: item.sortOrder }))} />
+      )}
+    </>
   );
 }

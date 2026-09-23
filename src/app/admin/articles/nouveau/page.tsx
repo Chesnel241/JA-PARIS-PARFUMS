@@ -1,10 +1,9 @@
-import { AdminShell } from "@/components/admin-shell";
 import { ArticleAdminForm } from "@/components/article-admin-form";
-import { requireStaff } from "@/lib/auth-guard";
+import { requireAdminStaff } from "@/components/admin/staff";
 
-export const metadata = { title: "Nouvel article · Maison" };
+export const metadata = { title: "Nouvel article" };
 
 export default async function NewArticlePage() {
-  const user = await requireStaff();
-  return <AdminShell user={user}><ArticleAdminForm /></AdminShell>;
+  await requireAdminStaff();
+  return <ArticleAdminForm />;
 }
