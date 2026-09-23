@@ -139,6 +139,9 @@ export function orderPayload(lines: OrderLine[], email = uniqueEmail("commande")
 
 export type CreatedOrder = {
   id: string;
+  reference?: string;
+  subtotal?: number;
+  shippingAmount?: number;
   email: string;
   totalAmount: number;
   status: string;

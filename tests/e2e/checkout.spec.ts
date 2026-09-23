@@ -39,7 +39,7 @@ async function addProductToCartAndCheckout(page: Page, product: AdminProduct) {
   const email = uniqueEmail("parcours");
   await fillCheckoutForm(page, email);
   const orderResponse = page.waitForResponse((response) => response.url().endsWith("/api/orders") && response.request().method() === "POST");
-  await page.getByRole("button", { name: /commander|payer|confirmer/i }).last().click();
+  await page.getByRole("button", { name: /valider la commande|commander|payer|confirmer/i }).last().click();
   const response = await orderResponse;
   expect(response.status()).toBe(201);
   const { order } = (await response.json()) as { order: CreatedOrder };
@@ -65,14 +65,12 @@ test.describe("Parcours d'achat", () => {
     expect(await variantStock(adminRequest, product.id, "50 ml")).toBe(19);
   });
 
-  // BUG: l'écran de succès (src/app/(site)/panier/page.tsx) n'affiche ni la référence de commande ni le
-  // montant à payer, et redirige automatiquement vers le lien Lydia fixe après 2 s : le client paie
-  // sans savoir combien ni quelle commande rapprocher du paiement.
-  test.fixme("la confirmation affiche la référence de commande et le bon total", async ({ page }) => {
+  test("la confirmation affiche la référence de commande et le bon total", async ({ page }) => {
     const { order } = await addProductToCartAndCheckout(page, product);
     const confirmation = page.locator("main");
-    const shortRef = order.id.slice(-8);
-    await expect(confirmation).toContainText(new RegExp(`${order.id}|${shortRef}`, "i"));
+    // Référence lisible (JAE-XXXXXX) renvoyée par l'API, à reporter dans le message Lydia.
+    expect(order.reference).toMatch(/^JAE-/);
+    await expect(confirmation).toContainText(order.reference as string);
     await expect(confirmation).toContainText(priceRegExp(TOTAL));
   });
 });

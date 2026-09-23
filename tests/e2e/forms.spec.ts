@@ -7,7 +7,7 @@ import { uniqueEmail } from "../helpers/factories";
 test.describe("Formulaires publics", () => {
   // BUG: /ambassadrices ne contient aucun formulaire de candidature (src/app/(site)/ambassadrices/page.tsx) :
   // l'API POST /api/ambassador-applications existe mais n'est reliée à aucune UI.
-  test.fixme("candidature ambassadrice depuis /ambassadrices → enregistrée", async ({ page, adminRequest }) => {
+  test("candidature ambassadrice depuis /ambassadrices → enregistrée", async ({ page, adminRequest }) => {
     const email = uniqueEmail("candidature-ui");
     await page.goto("/ambassadrices");
     const field = (label: RegExp) => page.getByLabel(label).and(page.locator("input, textarea"));
@@ -24,7 +24,7 @@ test.describe("Formulaires publics", () => {
 
   // BUG: le formulaire newsletter de l'accueil (src/app/(site)/home-content.tsx) vide le champ et affiche
   // « Merci » sans jamais appeler POST /api/newsletter : aucune inscription n'est enregistrée.
-  test.fixme("inscription newsletter depuis l'accueil → enregistrée", async ({ page, adminRequest }) => {
+  test("inscription newsletter depuis l'accueil → enregistrée", async ({ page, adminRequest }) => {
     const email = uniqueEmail("newsletter-ui");
     await page.goto("/");
     const input = page.getByRole("textbox", { name: /e-?mail/i }).last();

@@ -91,7 +91,7 @@ test.describe("API publique — commandes", () => {
 
   // BUG: aucune borne maximale sur items[].quantity (src/lib/order-validation.ts) :
   // 1 000 000, 2^31, MAX_SAFE_INTEGER passent la validation et finissent en 409 « Stock insuffisant ».
-  test.fixme("quantité énorme → 422 (validation, avant toute requête de stock)", async ({ request, adminRequest }) => {
+  test("quantité énorme → 422 (validation, avant toute requête de stock)", async ({ request, adminRequest }) => {
     const before = await variantStock(adminRequest, product.id, "30 ml");
     for (const quantity of [1_000_000, 2 ** 31, Number.MAX_SAFE_INTEGER]) {
       const response = await request.post("/api/orders", { data: orderPayload([{ slug: product.slug, volume: "30 ml", quantity }]) });
@@ -172,7 +172,7 @@ test.describe("API publique — stock et concurrence", () => {
 
   // BUG: createOrder ne filtre pas product.isActive (src/lib/order-service.ts, findFirst sur la variante) :
   // un produit dépublié reste commandable par l'API (201) et son stock est décrémenté.
-  test.fixme("un produit désactivé (dépublié) ne peut plus être commandé", async ({ request, adminRequest }) => {
+  test("un produit désactivé (dépublié) ne peut plus être commandé", async ({ request, adminRequest }) => {
     const product = await createProduct(adminRequest, productPayload({ variants: [{ volume: "50 ml", price: 3000, stock: 5 }] }));
     try {
       await expectStatus(await adminRequest.patch(`/api/admin/products/${product.id}`, { data: { isActive: false } }), 200);

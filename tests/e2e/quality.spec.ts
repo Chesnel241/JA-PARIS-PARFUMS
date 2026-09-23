@@ -8,9 +8,6 @@ import { PUBLIC_PAGES, resolvePublicPath } from "../helpers/pages";
 for (const publicPage of PUBLIC_PAGES) {
   test.describe(`Qualité — ${publicPage.name} (${publicPage.path})`, () => {
     test("structure : <html lang=fr>, <title> non vide, un seul h1", async ({ page, request }) => {
-      // BUG: l'accueil contient deux h1 (filigrane décoratif « JAE PARIS » + titre du héro)
-      // dans src/app/(site)/home-content.tsx — le filigrane devrait être un élément non titre (aria-hidden).
-      test.fixme(publicPage.path === "/", "BUG: deux h1 sur l'accueil (home-content.tsx)");
       const response = await page.goto(await resolvePublicPath(request, publicPage));
       expect(response?.status()).toBe(200);
       await expect(page.locator("html")).toHaveAttribute("lang", "fr");

@@ -21,7 +21,8 @@ export async function signInWithCredentials(
   request: APIRequestContext,
   { email = ADMIN_EMAIL, password = ADMIN_PASSWORD, forwardedFor }: { email?: string; password?: string; forwardedFor?: string } = {},
 ): Promise<CredentialsAttempt> {
-  const forwarded = forwardedFor ? { "x-forwarded-for": forwardedFor } : undefined;
+  // x-real-ip est lu en priorité par le serveur (voir src/lib/rate-limit.ts) : on pose les deux.
+  const forwarded = forwardedFor ? { "x-forwarded-for": forwardedFor, "x-real-ip": forwardedFor } : undefined;
   const csrfResponse = await request.get("/api/auth/csrf", { headers: forwarded });
   expect(csrfResponse.status(), "GET /api/auth/csrf").toBe(200);
   const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };

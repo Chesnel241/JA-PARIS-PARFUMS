@@ -73,7 +73,7 @@ test.describe("Admin — produits", () => {
   // BUG: soft 404 — notFound() rend bien la page « introuvable » mais avec le statut HTTP 200, en dev comme
   // en production : src/app/(site)/loading.tsx enveloppe les pages dans un Suspense, le streaming démarre
   // (statut 200 déjà envoyé) avant l'appel à notFound(). Impact SEO (pages fantômes indexées).
-  test.fixme("désactivation → la fiche répond 404", async ({ adminRequest, request }) => {
+  test("désactivation → la fiche répond 404", async ({ adminRequest, request }) => {
     const product = await createProduct(adminRequest, productPayload());
     try {
       await expectStatus(await adminRequest.patch(`/api/admin/products/${product.id}`, { data: { isActive: false } }), 200);
@@ -132,7 +132,7 @@ test.describe("Admin — commandes", () => {
 
   // BUG: setOrderStatus ne refuse pas une commande CANCELLED (src/lib/order-service.ts) : une commande
   // annulée (stock déjà restitué) peut repasser en SHIPPED/DELIVERED → stock et CA incohérents.
-  test.fixme("une commande annulée ne peut plus repasser en préparation/expédiée", async ({ adminRequest, request }) => {
+  test("une commande annulée ne peut plus repasser en préparation/expédiée", async ({ adminRequest, request }) => {
     const product = await createProduct(adminRequest, productPayload({ variants: [{ volume: "50 ml", price: 3000, stock: 5 }] }));
     try {
       const created = await request.post("/api/orders", { data: orderPayload([{ slug: product.slug, volume: "50 ml", quantity: 1 }]) });
@@ -184,7 +184,7 @@ test.describe("Admin — articles du Journal", () => {
   // BUG: soft 404 — notFound() rend bien la page « introuvable » mais avec le statut HTTP 200, en dev comme
   // en production : src/app/(site)/loading.tsx enveloppe les pages dans un Suspense, le streaming démarre
   // (statut 200 déjà envoyé) avant l'appel à notFound(). Impact SEO (pages fantômes indexées).
-  test.fixme("article dépublié → /journal/<slug> répond 404", async ({ adminRequest, request }) => {
+  test("article dépublié → /journal/<slug> répond 404", async ({ adminRequest, request }) => {
     const payload = articlePayload({ isPublished: false });
     const created = await adminRequest.post("/api/admin/articles", { data: payload });
     await expectStatus(created, 201);
@@ -257,7 +257,7 @@ test.describe("Admin — médias et apparence", () => {
 test.describe("Admin — ambassadrices, boutiques, candidatures", () => {
   // BUG: /ambassadrices affiche une liste codée en dur (src/app/(site)/ambassadrices/page.tsx) au lieu de
   // getPublicAmbassadors() : les ambassadrices gérées dans l'admin n'apparaissent jamais.
-  test.fixme("ambassadrice créée → visible sur /ambassadrices ; désactivée → absente", async ({ adminRequest, request }) => {
+  test("ambassadrice créée → visible sur /ambassadrices ; désactivée → absente", async ({ adminRequest, request }) => {
     const payload = ambassadorPayload();
     const created = await adminRequest.post("/api/admin/ambassadors", { data: payload });
     await expectStatus(created, 201);
@@ -273,7 +273,7 @@ test.describe("Admin — ambassadrices, boutiques, candidatures", () => {
 
   // BUG: /boutiques affiche une liste codée en dur (src/app/(site)/boutiques/page.tsx) au lieu de
   // getPublicStores() : les boutiques gérées dans l'admin n'apparaissent jamais.
-  test.fixme("boutique créée → visible sur /boutiques ; désactivée → absente", async ({ adminRequest, request }) => {
+  test("boutique créée → visible sur /boutiques ; désactivée → absente", async ({ adminRequest, request }) => {
     const payload = storePayload();
     const created = await adminRequest.post("/api/admin/stores", { data: payload });
     await expectStatus(created, 201);

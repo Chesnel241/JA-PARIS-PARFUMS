@@ -69,7 +69,7 @@ test.describe("Sécurité — upload de médias", () => {
   // BUG: l'upload ne vérifie que le type MIME déclaré par le client (file.type), jamais la signature
   // binaire (octets magiques) : un HTML/SVG envoyé en « image/png » est accepté (201) puis servi
   // par /api/media/<id>. Fichier : src/app/api/admin/media/route.ts.
-  test.fixme("faux PNG (mime déclaré image/png, contenu HTML) refusé", async ({ adminRequest }) => {
+  test("faux PNG (mime déclaré image/png, contenu HTML) refusé", async ({ adminRequest }) => {
     const response = await uploadMedia(adminRequest, { name: "photo.png", mimeType: "image/png", buffer: createFakePngPayload() });
     if (response.status() === 201) {
       // Nettoyage si l'app a accepté le fichier (bug), pour ne pas polluer la médiathèque.
@@ -82,7 +82,7 @@ test.describe("Sécurité — upload de médias", () => {
   // BUG: l'upload ne vérifie que le type MIME déclaré par le client (file.type), jamais la signature
   // binaire (octets magiques) : un HTML/SVG envoyé en « image/png » est accepté (201) puis servi
   // par /api/media/<id>. Fichier : src/app/api/admin/media/route.ts.
-  test.fixme("SVG déguisé en PNG refusé", async ({ adminRequest }) => {
+  test("SVG déguisé en PNG refusé", async ({ adminRequest }) => {
     const response = await uploadMedia(adminRequest, { name: "image.png", mimeType: "image/png", buffer: createMaliciousSvg() });
     if (response.status() === 201) {
       const { asset } = (await response.json()) as { asset: { id: string } };
@@ -147,7 +147,7 @@ test.describe("Sécurité — limitation des tentatives de connexion", () => {
   // BUG: recordFailedLogin fait lecture puis upsert non atomiques (src/lib/login-rate-limit.ts) :
   // des échecs envoyés en parallèle écrasent le compteur ; après 10 échecs simultanés le bon mot
   // de passe est accepté → force brute contournant la limite de 5 tentatives.
-  test.fixme("10 échecs concurrents → blocage quand même (pas de perte de compteur)", async ({ playwright, baseURL }) => {
+  test("10 échecs concurrents → blocage quand même (pas de perte de compteur)", async ({ playwright, baseURL }) => {
     const ip = uniqueForwardedFor();
     const clients = await Promise.all(Array.from({ length: 10 }, () => playwright.request.newContext({ baseURL })));
     try {

@@ -13,30 +13,32 @@ test.describe("Vitrine — navigation", () => {
   test("navigation principale vers les parfums (menu mobile : ouverture/fermeture)", async ({ page, isMobile }) => {
     await page.goto("/");
     const header = page.getByRole("banner");
-    const parfums = header.getByRole("link", { name: /^parfums$/i });
 
     if (isMobile) {
-      await expect(parfums, "menu fermé : le lien ne doit pas être à l'écran").not.toBeInViewport();
-      await header.getByRole("button", { name: /ouvrir.*menu|^menu$/i }).click();
-      await expect(parfums).toBeInViewport();
-      await header.getByRole("button", { name: /fermer.*menu/i }).click();
-      await expect(parfums).not.toBeInViewport();
-      await header.getByRole("button", { name: /ouvrir.*menu|^menu$/i }).click();
+      // Le menu mobile est un dialogue plein écran rendu hors du <header>.
+      const menu = page.getByRole("dialog", { name: /menu/i });
+      await expect(menu).toHaveCount(0);
+      await header.getByRole("button", { name: /ouvrir.*menu/i }).click();
+      await expect(menu).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(menu).toHaveCount(0);
+      await header.getByRole("button", { name: /ouvrir.*menu/i }).click();
+      await menu.getByRole("link", { name: /^parfums$/i }).click();
+      await expect(menu, "le menu se referme après navigation").toHaveCount(0);
+    } else {
+      await header.getByRole("link", { name: /^parfums$/i }).click();
     }
 
-    await parfums.click();
     await expect(page).toHaveURL(/\/boutique$/);
     await expect(page.locator("h1")).toBeVisible();
-    if (isMobile) await expect(header.getByRole("link", { name: /^journal$/i }), "le menu se referme après navigation").not.toBeInViewport();
 
+    // L'icône panier ouvre le tiroir panier (dialogue) sans quitter la page.
     await header.getByRole("link", { name: /panier/i }).click();
-    await expect(page).toHaveURL(/\/panier$/);
+    await expect(page.getByRole("dialog", { name: /panier/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/boutique$/);
   });
 
-  // BUG: soft 404 — notFound() rend bien la page « introuvable » mais avec le statut HTTP 200, en dev comme
-  // en production : src/app/(site)/loading.tsx enveloppe les pages dans un Suspense, le streaming démarre
-  // (statut 200 déjà envoyé) avant l'appel à notFound(). Impact SEO (pages fantômes indexées).
-  test.fixme("/produit/slug-inexistant → page 404 (statut HTTP 404)", async ({ page }) => {
+  test("/produit/slug-inexistant → page 404 (statut HTTP 404)", async ({ page }) => {
     const response = await page.goto("/produit/qa-slug-inexistant");
     await expect(page.getByText(/introuvable|n'existe pas|could not be found|404/i).first()).toBeVisible();
     expect(response?.status()).toBe(404);
@@ -55,24 +57,22 @@ test.describe("Vitrine — recherche", () => {
 
   test("saisie dans le champ de recherche → résultat cliquable", async ({ page }) => {
     await page.goto("/recherche");
-    await page.getByRole("textbox", { name: /recherch/i }).fill(product.name);
+    await page.getByRole("searchbox", { name: /recherch/i }).fill(product.name);
     const result = page.getByRole("link", { name: new RegExp(product.name, "i") });
     await expect(result).toBeVisible();
     await result.click();
     await expect(page).toHaveURL(new RegExp(`/produit/${product.slug}$`));
   });
 
-  // BUG: ProductSearch initialise la requête à "" et ignore le paramètre ?q= de l'URL
-  // (src/components/product-search.tsx) : un lien partagé /recherche?q=rose n'affiche aucun résultat.
-  test.fixme("/recherche?q=… affiche directement les résultats", async ({ page }) => {
+  test("/recherche?q=… affiche directement les résultats", async ({ page }) => {
     await page.goto(`/recherche?q=${encodeURIComponent(product.name)}`);
     await expect(page.getByRole("link", { name: new RegExp(product.name, "i") })).toBeVisible();
   });
 
   test("recherche sans résultat → message explicite", async ({ page }) => {
     await page.goto("/recherche");
-    await page.getByRole("textbox", { name: /recherch/i }).fill("zzqa-aucun-resultat");
-    await expect(page.getByText(/aucun résultat/i)).toBeVisible();
+    await page.getByRole("searchbox", { name: /recherch/i }).fill("zzqa-aucun-resultat");
+    await expect(page.getByText(/aucun résultat/i).first()).toBeVisible();
   });
 });
 

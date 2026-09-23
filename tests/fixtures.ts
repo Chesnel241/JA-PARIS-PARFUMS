@@ -49,7 +49,18 @@ export function collectProblems(page: Page): PageProblems {
   return problems;
 }
 
+// Chaque test simule une IP client distincte : les limites de débit par IP
+// (commandes, candidatures, newsletter) ne se déclenchent pas d'un test à l'autre.
+// Un test peut toujours imposer ses propres en-têtes sur une requête donnée.
+function uniqueClientIp() {
+  const byte = () => Math.floor(Math.random() * 254) + 1;
+  return `10.${byte()}.${byte()}.${byte()}`;
+}
+
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  extraHTTPHeaders: async ({ extraHTTPHeaders }, provide) => {
+    await provide({ ...extraHTTPHeaders, "x-real-ip": uniqueClientIp() });
+  },
   adminRequest: [
     async ({ playwright }, provide) => {
       const context = await playwright.request.newContext({ baseURL: BASE_URL, storageState: ADMIN_STATE_PATH });

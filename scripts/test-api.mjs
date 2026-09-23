@@ -426,7 +426,8 @@ async function main() {
     const set = await request("/api/admin/settings", { method: "PUT", jar, body: { key: "home.hero.card", value: "/essence.jpg" } });
     assert(set.data.images["home.hero.card"] === "/essence.jpg", "réglage non appliqué");
     const reset = await request("/api/admin/settings", { method: "PUT", jar, body: { key: "home.hero.card", value: "" } });
-    assert(reset.data.images["home.hero.card"] === "/craft.jpg", "réinitialisation non appliquée");
+    const defaultCard = current.data.slots?.find?.((slot) => slot.key === "home.hero.card")?.defaultValue ?? "/hero.jpg";
+    assert(reset.data.images["home.hero.card"] === defaultCard, "réinitialisation non appliquée");
   });
 
   section("Commandes");
