@@ -72,6 +72,8 @@ model Product {
   orderItems  OrderItem[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+
+  @@index([isActive, category, createdAt])
 }
 
 model ProductVariant {
@@ -89,9 +91,15 @@ model ProductVariant {
 
 model Order {
   id              String        @id @default(cuid())
+  // Référence lisible communiquée au client (ex. « JAE-7K3P9Q ») : c'est elle
+  // qu'il indique dans son message de paiement Lydia.
+  reference       String?       @unique
   userId          String?
   user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   email           String
+  // Montants en centimes : sous-total articles + livraison = total.
+  subtotalAmount  Int           @default(0)
+  shippingAmount  Int           @default(0)
   totalAmount     Int
   currency        String        @default("eur")
   status          OrderStatus   @default(PENDING)
@@ -101,6 +109,11 @@ model Order {
   items           OrderItem[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([paymentStatus, createdAt])
+  @@index([createdAt])
+  @@index([email])
 }
 
 model OrderItem {
@@ -113,6 +126,9 @@ model OrderItem {
   volume    String
   quantity  Int
   price     Int
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 // Image téléversée depuis l'espace admin, servie via /api/media/[id].
@@ -124,6 +140,8 @@ model MediaAsset {
   size      Int
   data      Bytes
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 // Réglages du site modifiables depuis l'admin (images de la page d'accueil…).
@@ -144,6 +162,8 @@ model Article {
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([isPublished, publishedAt])
 }
 
 model Ambassador {
@@ -207,4 +227,17 @@ model NewsletterSubscriber {
   id        String   @id @default(cuid())
   email     String   @unique
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Limiteur de débit partagé entre toutes les instances serverless (Vercel) :
+// un compteur par clé (portée + empreinte de l'IP) sur une fenêtre fixe.
+model RateLimitBucket {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  expiresAt   DateTime
+
+  @@index([expiresAt])
 }

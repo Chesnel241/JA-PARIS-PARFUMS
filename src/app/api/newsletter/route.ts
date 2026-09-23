@@ -1,16 +1,18 @@
-import { NextResponse } from "next/server";
-import { newsletterInputSchema, subscribeToNewsletter } from "@/lib/newsletter-service";
+import { handleApi, json, parseJson } from "@/lib/api";
+import { subscribeToNewsletter } from "@/lib/newsletter-service";
+import { newsletterInputSchema } from "@/lib/newsletter-validation";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
+import { revalidateNewsletter } from "@/lib/revalidate";
 
+// Inscription publique au « Cercle JAE ». Idempotente.
 export async function POST(request: Request) {
-  const parsed = newsletterInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Adresse e-mail invalide." }, { status: 422 });
-  if (parsed.data.website) return NextResponse.json({ ok: true }, { status: 201 });
+  return handleApi("newsletter:subscribe", async () => {
+    const input = await parseJson(request, newsletterInputSchema, { message: "Adresse e-mail invalide." });
+    if (input.website) return json({ ok: true }, { status: 201 });
 
-  try {
-    await subscribeToNewsletter(parsed.data.email);
-    return NextResponse.json({ ok: true }, { status: 201 });
-  } catch (error) {
-    console.error("[newsletter] inscription impossible :", error);
-    return NextResponse.json({ error: "Inscription impossible pour le moment. Réessayez dans un instant." }, { status: 500 });
-  }
+    await enforceRateLimit(request, RATE_LIMITS.newsletter, "Trop d'inscriptions depuis cette connexion.");
+    await subscribeToNewsletter(input.email);
+    revalidateNewsletter();
+    return json({ ok: true }, { status: 201 });
+  });
 }

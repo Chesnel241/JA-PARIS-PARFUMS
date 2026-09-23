@@ -62,9 +62,18 @@ export function deleteAdminProduct(id: string) {
   return prisma.product.delete({ where: { id } });
 }
 
+// Message précis pour une violation d'unicité (slug ou SKU).
+export function productConflictMessage(error: unknown) {
+  const target = error instanceof Prisma.PrismaClientKnownRequestError ? JSON.stringify(error.meta?.target ?? "") : "";
+  if (target.includes("slug")) return "Ce slug est déjà utilisé par un autre produit.";
+  if (target.includes("sku")) return "Un de ces SKU est déjà utilisé par un autre produit.";
+  if (target.includes("volume")) return "Deux variantes ne peuvent pas avoir la même contenance.";
+  return "Un produit, un slug ou un SKU utilise déjà cette valeur.";
+}
+
 export function productApiError(error: unknown) {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === "P2002") return { status: 409, message: "Un produit, un slug ou un SKU utilise déjà cette valeur." };
+    if (error.code === "P2002") return { status: 409, message: productConflictMessage(error) };
     if (error.code === "P2025") return { status: 404, message: "Produit introuvable." };
     if (error.code === "P2003") return { status: 409, message: "Ce produit appartient à une commande. Dépubliez-le au lieu de le supprimer." };
   }
