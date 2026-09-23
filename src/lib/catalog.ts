@@ -13,6 +13,7 @@ function toCatalogProduct(product: Awaited<ReturnType<typeof prisma.product.find
     description: product.description,
     story: product.story,
     image: product.images[0] ?? "/parfum-noir.svg",
+    images: product.images.length > 0 ? product.images : ["/parfum-noir.svg"],
     accent: "#9b6b43",
     notes: { top: product.notesTop, heart: product.notesHeart, base: product.notesBase },
     variants: product.variants,
