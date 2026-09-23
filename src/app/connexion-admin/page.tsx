@@ -34,9 +34,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
     <div className="adm-login">
       <aside className="adm-login-aside" aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/craft.jpg" alt="" />
+        <img src="/newsletter.jpg" alt="" />
         <div className="adm-login-aside-content">
-          <div className="adm-brand" style={{ padding: 0 }}><strong>JAE</strong><span>Paris</span></div>
+          <span />
           <div>
             <blockquote>La beauté du geste,<br /><em>la précision du détail.</em></blockquote>
             <p>Collection, commandes, Journal et communauté : toute la maison au même endroit.</p>

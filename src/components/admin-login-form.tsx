@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { ArrowRight, CircleAlert, Eye, EyeOff, LoaderCircle, Lock } from "lucide-react";
 import { getLoginThrottle } from "@/app/connexion-admin/actions";
@@ -12,6 +12,10 @@ export function AdminLoginForm({ callbackUrl, initialError }: { callbackUrl: str
   const [errors, setErrors] = useState<Errors>(initialError ? { form: { ...initialError, tone: "warning" } } : {});
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
+  // Tant que le formulaire n'est pas hydraté, l'envoi natif est bloqué
+  // (sinon le navigateur soumettrait les champs sans passer par Auth.js).
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +57,7 @@ export function AdminLoginForm({ callbackUrl, initialError }: { callbackUrl: str
   }
 
   return (
-    <form ref={formRef} className="adm-login-form" onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} className="adm-login-form" method="post" onSubmit={handleSubmit} noValidate data-ready={ready ? "" : undefined}>
       {errors.form && (
         <div className={`adm-alert adm-alert--${errors.form.tone}`} role="alert">
           <CircleAlert aria-hidden />
@@ -77,7 +81,7 @@ export function AdminLoginForm({ callbackUrl, initialError }: { callbackUrl: str
         </div>
         {errors.password && <p className="adm-error" id="admin-password-error"><CircleAlert aria-hidden />{errors.password}</p>}
       </div>
-      <button className="adm-btn adm-btn--primary adm-btn--block" type="submit" disabled={pending} aria-busy={pending || undefined} style={{ minHeight: 48 }}>
+      <button className="adm-btn adm-btn--primary adm-btn--block" type="submit" disabled={pending || !ready} aria-busy={pending || undefined} style={{ minHeight: 48 }}>
         {pending ? <><LoaderCircle className="adm-spin" aria-hidden /> Connexion…</> : <>Se connecter <ArrowRight aria-hidden /></>}
       </button>
       <p className="adm-login-foot"><Lock aria-hidden /> Connexion chiffrée · 5 tentatives maximum</p>

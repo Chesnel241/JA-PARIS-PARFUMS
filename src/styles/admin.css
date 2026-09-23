@@ -425,6 +425,12 @@ a.adm-list-item:hover, .adm-list-item[data-clickable]:hover { background: var(--
 .adm-list-item-text span { overflow: hidden; color: var(--adm-text-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .adm-list-item-end { display: flex; flex: none; align-items: center; gap: 8px; color: var(--adm-text-2); font-size: 14px; font-variant-numeric: tabular-nums; }
 .adm-list-item > svg:last-child { width: 16px; height: 16px; flex: none; color: var(--adm-text-3); }
+@media (max-width: 559px) {
+  .adm-list-item--stack { flex-wrap: wrap; row-gap: 6px; }
+  .adm-list-item--stack .adm-list-item-text { flex: 1 1 calc(100% - 32px); }
+  .adm-list-item--stack .adm-list-item-text strong, .adm-list-item--stack .adm-list-item-text span { white-space: normal; }
+  .adm-list-item--stack .adm-list-item-end { order: 3; width: 100%; justify-content: space-between; }
+}
 
 .adm-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .adm-quick a { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--adm-border); border-radius: var(--adm-radius); background: var(--adm-surface); color: var(--adm-text); font-size: 14px; font-weight: 600; transition: border-color .15s, background .15s; }
@@ -537,6 +543,8 @@ a.adm-list-item:hover, .adm-list-item[data-clickable]:hover { background: var(--
 /* ——— Apparence ——— */
 .adm-slots { display: grid; gap: 20px; }
 @media (min-width: 900px) { .adm-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; } }
+.adm-slots > .adm-card { display: flex; flex-direction: column; }
+.adm-slots > .adm-card > .adm-card-body { flex: 1; }
 .adm-slot-preview { position: relative; overflow: hidden; border-radius: var(--adm-radius-lg); background: #faf9f6; }
 .adm-slot-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .adm-slot-preview[data-variant="hero"] { aspect-ratio: 4 / 3; background: radial-gradient(circle at 50% 70%, #fff 0%, #f3efe8 70%); }

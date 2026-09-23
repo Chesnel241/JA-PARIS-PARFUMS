@@ -38,7 +38,7 @@ export default async function AdminDashboardPage() {
     prisma.product.count({ where: { isActive: true } }),
   ]);
 
-  const firstName = user.name?.split(" ")[0];
+  const firstName = user.name?.trim();
 
   return (
     <>
@@ -75,7 +75,7 @@ export default async function AdminDashboardPage() {
                 const showPayment = order.status !== OrderStatus.CANCELLED && order.paymentStatus !== PaymentStatus.PAID;
                 return (
                   <li key={order.id}>
-                    <Link className="adm-list-item" href={`/admin/commandes/${order.id}`}>
+                    <Link className="adm-list-item adm-list-item--stack" href={`/admin/commandes/${order.id}`}>
                       <span className="adm-list-item-text">
                         <strong>{orderReference(order.id)} · {customer}</strong>
                         <span>{formatDateTime(order.createdAt)} · {plural(order.items.reduce((sum, item) => sum + item.quantity, 0), "article")}</span>
