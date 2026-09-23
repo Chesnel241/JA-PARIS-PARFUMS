@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualite-et-e2e:
+    name: Typecheck, lint, build et tests E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jae_user
+          POSTGRES_PASSWORD: jae_ci_password
+          POSTGRES_DB: jae_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jae_user -d jae_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Valeurs factices mais valides : aucun secret réel n'est nécessaire en CI.
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://jae_user:jae_ci_password@localhost:5432/jae_ci?schema=public
+      AUTH_SECRET: ci-auth-secret-0123456789abcdef0123456789abcdef
+      AUTH_URL: http://127.0.0.1:3005
+      AUTH_TRUST_HOST: "true"
+      ADMIN_EMAIL: admin@jae-paris.com
+      ADMIN_PASSWORD: CiAdminPassword2026!
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3005
+      BASE_URL: http://127.0.0.1:3005
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installation des dépendances
+        run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+      - name: Installation de Chromium pour Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Migrations Prisma
+        run: npx prisma migrate deploy
+
+      - name: Données de démonstration (seed)
+        run: npm run db:seed
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build de production
+        run: npm run build
+
+      - name: Préparation du serveur standalone
+        run: |
+          SERVER_DIR="$(dirname "$(find .next/standalone -name server.js -not -path '*/node_modules/*' | head -n 1)")"
+          echo "SERVER_DIR=$SERVER_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$SERVER_DIR/.next"
+          cp -r .next/static "$SERVER_DIR/.next/static"
+          cp -r public "$SERVER_DIR/public"
+
+      - name: Démarrage du serveur
+        run: |
+          cd "$SERVER_DIR"
+          PORT=3005 HOSTNAME=127.0.0.1 nohup node server.js > "$GITHUB_WORKSPACE/server.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS -o /dev/null "$BASE_URL/robots.txt"; then echo "Serveur prêt après ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "Le serveur n'a pas démarré :"; cat "$GITHUB_WORKSPACE/server.log"; exit 1
+
+      - name: Tests E2E et API (Playwright)
+        run: npm run test:e2e
+
+      - name: Rapport Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            server.log
+          retention-days: 14
