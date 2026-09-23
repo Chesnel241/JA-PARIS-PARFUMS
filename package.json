@@ -7,7 +7,7 @@
     "build": "prisma generate && (prisma migrate deploy || prisma db push --skip-generate) && next build",
     "start": "next start",
     "postinstall": "prisma generate",
-    "lint": "eslint . --ignore-pattern '__MACOSX/**' --ignore-pattern '.next/**'",
+    "lint": "eslint . --ignore-pattern '__MACOSX/**' --ignore-pattern '.next/**' --ignore-pattern 'playwright-report/**' --ignore-pattern 'test-results/**'",
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

@@ -23,16 +23,22 @@ const IGNORED_CONSOLE = [
   /Download the React DevTools/i,
   /\[HMR\]/,
   /\[Fast Refresh\]/,
+  // Serveur de test en HTTP uniquement : la CSP `upgrade-insecure-requests` fait passer en https://
+  // les redirections (ex. préchargement du lien /admin du pied de page → /connexion-admin), ce qui
+  // échoue localement/en CI mais pas en production (HTTPS). Next retombe alors sur une navigation normale.
+  ...(BASE_URL.startsWith("http://")
+    ? [/net::ERR_SSL_PROTOCOL_ERROR \(https:\/\//, /Failed to fetch RSC payload for .* Falling back to browser navigation/s]
+    : []),
 ];
 
 export function collectProblems(page: Page): PageProblems {
   const problems: PageProblems = { consoleErrors: [], pageErrors: [], failedResponses: [] };
   page.on("console", (message: ConsoleMessage) => {
     if (message.type() !== "error") return;
-    const text = message.text();
-    if (IGNORED_CONSOLE.some((pattern) => pattern.test(text))) return;
     const location = message.location();
-    problems.consoleErrors.push(`${text}${location.url ? ` (${location.url}:${location.lineNumber})` : ""}`);
+    const entry = `${message.text()}${location.url ? ` (${location.url}:${location.lineNumber})` : ""}`;
+    if (IGNORED_CONSOLE.some((pattern) => pattern.test(entry))) return;
+    problems.consoleErrors.push(entry);
   });
   page.on("pageerror", (error) => problems.pageErrors.push(`${error.name}: ${error.message}`));
   page.on("response", (response) => {

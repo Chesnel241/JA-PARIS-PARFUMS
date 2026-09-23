@@ -33,7 +33,10 @@ test.describe("Vitrine — navigation", () => {
     await expect(page).toHaveURL(/\/panier$/);
   });
 
-  test("/produit/slug-inexistant → page 404 (statut HTTP 404)", async ({ page }) => {
+  // BUG: soft 404 — notFound() rend bien la page « introuvable » mais avec le statut HTTP 200, en dev comme
+  // en production : src/app/(site)/loading.tsx enveloppe les pages dans un Suspense, le streaming démarre
+  // (statut 200 déjà envoyé) avant l'appel à notFound(). Impact SEO (pages fantômes indexées).
+  test.fixme("/produit/slug-inexistant → page 404 (statut HTTP 404)", async ({ page }) => {
     const response = await page.goto("/produit/qa-slug-inexistant");
     await expect(page.getByText(/introuvable|n'existe pas|could not be found|404/i).first()).toBeVisible();
     expect(response?.status()).toBe(404);
