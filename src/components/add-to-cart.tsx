@@ -108,6 +108,7 @@ export function AddToCart({ product }: { product: Product }) {
       <p className="cm-purchase__price" aria-live="polite">
         <span className="sr-only">Prix : </span>
         <motion.span
+          className="cm-purchase__amount"
           key={selected ? `${selected.volume}-${selected.price}` : "none"}
           initial={reduceMotion ? false : { opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
