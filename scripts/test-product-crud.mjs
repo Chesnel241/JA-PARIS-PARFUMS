@@ -1,4 +1,4 @@
-const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
+const baseUrl = process.env.BASE_URL ?? process.env.AUTH_URL ?? "http://localhost:3000";
 const email = process.env.ADMIN_EMAIL;
 const password = process.env.ADMIN_PASSWORD;
 

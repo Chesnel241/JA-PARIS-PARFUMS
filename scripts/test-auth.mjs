@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
+const baseUrl = process.env.BASE_URL ?? process.env.AUTH_URL ?? "http://localhost:3000";
 const email = process.env.ADMIN_EMAIL;
 const password = process.env.ADMIN_PASSWORD;
 
@@ -44,8 +44,14 @@ async function signIn(candidatePassword, jar = createCookieJar()) {
   return { response, data, jar };
 }
 
-try {
+// Remet à zéro le verrou par e-mail + IP et la limite globale par IP.
+async function resetLoginLimits() {
   await prisma.loginAttempt.deleteMany();
+  await prisma.rateLimitBucket.deleteMany({ where: { key: { startsWith: "login-ip:" } } });
+}
+
+try {
+  await resetLoginLimits();
 
   for (let attempt = 1; attempt <= 5; attempt += 1) {
     const result = await signIn("mot-de-passe-volontairement-faux");
@@ -60,7 +66,7 @@ try {
   if (!blockedLogin.data.url?.includes("CredentialsSignin")) throw new Error("Une connexion bloquée a été acceptée.");
   console.info("✓ Connexion refusée pendant la période de blocage");
 
-  await prisma.loginAttempt.deleteMany();
+  await resetLoginLimits();
   const authenticated = await signIn(password);
   if (!authenticated.response.ok || authenticated.data.url?.includes("error=")) throw new Error("La connexion administrateur a échoué.");
 
@@ -71,9 +77,9 @@ try {
 
   const adminResponse = await fetch(`${baseUrl}/admin`, { headers: { cookie: authenticated.jar.header() }, redirect: "manual" });
   const adminHtml = await adminResponse.text();
-  if (adminResponse.status !== 200 || !adminHtml.includes("Session sécurisée")) throw new Error("Le back-office protégé n’est pas accessible.");
+  if (adminResponse.status !== 200 || !adminHtml.includes(email.toLowerCase())) throw new Error("Le back-office protégé n’est pas accessible.");
   console.info("✓ Back-office protégé accessible avec la session");
 } finally {
-  await prisma.loginAttempt.deleteMany();
+  await resetLoginLimits();
   await prisma.$disconnect();
 }
