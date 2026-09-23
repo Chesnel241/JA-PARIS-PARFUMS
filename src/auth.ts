@@ -31,6 +31,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const name = error instanceof Error ? error.name : "Error";
       // CredentialsSignin = mauvais identifiants : cas normal, pas une erreur serveur.
       if (name === "CredentialsSignin") return;
+      if (name === "JWTSessionError") {
+        console.warn("[auth] cookie de session illisible ignoré (expiré, corrompu ou AUTH_SECRET modifié) : l'utilisateur doit se reconnecter.");
+        return;
+      }
       console.error(`[auth] ${name} :`, error instanceof Error ? error.message : error);
     },
     warn(code) {
