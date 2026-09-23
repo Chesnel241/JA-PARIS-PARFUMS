@@ -58,7 +58,6 @@ export function sanitizeFilename(original: string, mimeType: MediaMimeType) {
   const withoutExtension = base.replace(/\.[^.]*$/, "");
   const cleaned = withoutExtension
     .normalize("NFC")
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u001f\u007f]/g, "")
     .replace(/[^\p{L}\p{N} ._()-]/gu, "-")
     .replace(/\s+/g, " ")

@@ -13,7 +13,6 @@ export const imageReferenceSchema = z
   .max(500)
   .refine(
     (value) => {
-      // eslint-disable-next-line no-control-regex
       if (/[\\\u0000-\u001f\u007f]/.test(value)) return false;
       if (value.startsWith("/") && !value.startsWith("//")) return true;
       try {

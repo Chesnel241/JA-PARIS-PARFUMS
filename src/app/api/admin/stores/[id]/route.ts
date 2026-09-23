@@ -1,52 +1,47 @@
-import { NextResponse } from "next/server";
-import { getCurrentStaff } from "@/lib/current-staff";
-import { communityApiError, deleteAdminStore, getAdminStore, setAdminStoreStatus, updateAdminStore } from "@/lib/community-service";
+import { ApiError, handleApi, json, noContent, parseId, parseJson, requireApiStaff } from "@/lib/api";
+import { deleteAdminStore, getAdminStore, setAdminStoreStatus, updateAdminStore } from "@/lib/community-service";
 import { activeStatusSchema, storeInputSchema } from "@/lib/community-validation";
+import { revalidateStores } from "@/lib/revalidate";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function fail(error: unknown) {
-  const apiError = communityApiError(error, "Boutique introuvable.");
-  return NextResponse.json({ error: apiError.message }, { status: apiError.status });
-}
+const messages = { notFound: "Boutique introuvable." };
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const store = await getAdminStore((await params).id);
-  return store ? NextResponse.json({ store }) : NextResponse.json({ error: "Boutique introuvable." }, { status: 404 });
+  return handleApi("admin/stores:get", async () => {
+    await requireApiStaff();
+    const store = await getAdminStore(await parseId(params, messages.notFound));
+    if (!store) throw new ApiError(404, messages.notFound);
+    return json({ store });
+  }, messages);
 }
 
 export async function PUT(request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const parsed = storeInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Données invalides.", fields: parsed.error.flatten() }, { status: 422 });
-
-  try {
-    return NextResponse.json({ store: await updateAdminStore((await params).id, parsed.data) });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/stores:update", async () => {
+    await requireApiStaff();
+    const id = await parseId(params, messages.notFound);
+    const store = await updateAdminStore(id, await parseJson(request, storeInputSchema));
+    revalidateStores();
+    return json({ store });
+  }, messages);
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const parsed = activeStatusSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Statut invalide." }, { status: 422 });
-
-  try {
-    return NextResponse.json({ store: await setAdminStoreStatus((await params).id, parsed.data.isActive) });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/stores:status", async () => {
+    await requireApiStaff();
+    const id = await parseId(params, messages.notFound);
+    const { isActive } = await parseJson(request, activeStatusSchema, { message: "Statut invalide." });
+    const store = await setAdminStoreStatus(id, isActive);
+    revalidateStores();
+    return json({ store });
+  }, messages);
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-
-  try {
-    await deleteAdminStore((await params).id);
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/stores:delete", async () => {
+    await requireApiStaff();
+    await deleteAdminStore(await parseId(params, messages.notFound));
+    revalidateStores();
+    return noContent();
+  }, messages);
 }

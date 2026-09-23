@@ -1,52 +1,47 @@
-import { NextResponse } from "next/server";
-import { getCurrentStaff } from "@/lib/current-staff";
-import { communityApiError, deleteAdminAmbassador, getAdminAmbassador, setAdminAmbassadorStatus, updateAdminAmbassador } from "@/lib/community-service";
+import { ApiError, handleApi, json, noContent, parseId, parseJson, requireApiStaff } from "@/lib/api";
+import { deleteAdminAmbassador, getAdminAmbassador, setAdminAmbassadorStatus, updateAdminAmbassador } from "@/lib/community-service";
 import { activeStatusSchema, ambassadorInputSchema } from "@/lib/community-validation";
+import { revalidateAmbassadors } from "@/lib/revalidate";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function fail(error: unknown) {
-  const apiError = communityApiError(error, "Ambassadrice introuvable.");
-  return NextResponse.json({ error: apiError.message }, { status: apiError.status });
-}
+const messages = { notFound: "Ambassadrice introuvable." };
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const ambassador = await getAdminAmbassador((await params).id);
-  return ambassador ? NextResponse.json({ ambassador }) : NextResponse.json({ error: "Ambassadrice introuvable." }, { status: 404 });
+  return handleApi("admin/ambassadors:get", async () => {
+    await requireApiStaff();
+    const ambassador = await getAdminAmbassador(await parseId(params, messages.notFound));
+    if (!ambassador) throw new ApiError(404, messages.notFound);
+    return json({ ambassador });
+  }, messages);
 }
 
 export async function PUT(request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const parsed = ambassadorInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Données invalides.", fields: parsed.error.flatten() }, { status: 422 });
-
-  try {
-    return NextResponse.json({ ambassador: await updateAdminAmbassador((await params).id, parsed.data) });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/ambassadors:update", async () => {
+    await requireApiStaff();
+    const id = await parseId(params, messages.notFound);
+    const ambassador = await updateAdminAmbassador(id, await parseJson(request, ambassadorInputSchema));
+    revalidateAmbassadors();
+    return json({ ambassador });
+  }, messages);
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const parsed = activeStatusSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Statut invalide." }, { status: 422 });
-
-  try {
-    return NextResponse.json({ ambassador: await setAdminAmbassadorStatus((await params).id, parsed.data.isActive) });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/ambassadors:status", async () => {
+    await requireApiStaff();
+    const id = await parseId(params, messages.notFound);
+    const { isActive } = await parseJson(request, activeStatusSchema, { message: "Statut invalide." });
+    const ambassador = await setAdminAmbassadorStatus(id, isActive);
+    revalidateAmbassadors();
+    return json({ ambassador });
+  }, messages);
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-
-  try {
-    await deleteAdminAmbassador((await params).id);
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    return fail(error);
-  }
+  return handleApi("admin/ambassadors:delete", async () => {
+    await requireApiStaff();
+    await deleteAdminAmbassador(await parseId(params, messages.notFound));
+    revalidateAmbassadors();
+    return noContent();
+  }, messages);
 }

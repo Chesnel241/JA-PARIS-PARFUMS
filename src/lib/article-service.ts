@@ -28,10 +28,13 @@ export async function updateAdminArticle(id: string, input: ArticleInput) {
   });
 }
 
-export function setAdminArticleStatus(id: string, isPublished: boolean) {
+// Publier conserve la date de première publication (cohérent avec
+// updateAdminArticle) : dépublier/republier ne fait pas « remonter » l'article.
+export async function setAdminArticleStatus(id: string, isPublished: boolean) {
+  const existing = await prisma.article.findUniqueOrThrow({ where: { id }, select: { publishedAt: true } });
   return prisma.article.update({
     where: { id },
-    data: { isPublished, ...(isPublished ? { publishedAt: new Date() } : {}) },
+    data: { isPublished, ...(isPublished && !existing.publishedAt ? { publishedAt: new Date() } : {}) },
   });
 }
 
