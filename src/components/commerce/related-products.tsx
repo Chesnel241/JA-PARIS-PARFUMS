@@ -9,7 +9,7 @@ export function lowestPrice(product: Product) {
 }
 
 // Carte produit « image d'abord » du parcours d'achat (suggestions, recherche).
-export function CommerceProductCard({ product, sizes = "(max-width: 760px) 50vw, 25vw" }: { product: Product; sizes?: string }) {
+export function CommerceProductCard({ product, sizes = "(max-width: 760px) 50vw, 25vw", priority = false }: { product: Product; sizes?: string; priority?: boolean }) {
   const src = safeImageSrc(product.image);
   const inStock = product.variants.some((variant) => variant.stock > 0);
   const price = lowestPrice(product);
@@ -18,7 +18,7 @@ export function CommerceProductCard({ product, sizes = "(max-width: 760px) 50vw,
   return (
     <Link href={`/produit/${encodeURIComponent(product.slug)}`} className="cm-card">
       <span className="cm-card__media">
-        <Image src={src} alt="" fill sizes={sizes} unoptimized={isUnoptimizedImage(src)} className={isVectorImage(src) ? "is-contained" : "is-cover"} />
+        <Image src={src} alt="" fill priority={priority} sizes={sizes} unoptimized={isUnoptimizedImage(src)} className={isVectorImage(src) ? "is-contained" : "is-cover"} />
         {!inStock ? <span className="cm-card__badge">Épuisé</span> : null}
       </span>
       <span className="cm-card__body">

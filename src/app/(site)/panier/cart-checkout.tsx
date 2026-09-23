@@ -174,7 +174,7 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
           <div className="cm-checkout">
             <ul className="cm-cart-lines" aria-label="Articles du panier">
               <AnimatePresence initial={false}>
-                {items.map((item) => (
+                {items.map((item, position) => (
                   <motion.li
                     key={`${item.slug}::${item.volume}`}
                     layout={reduceMotion ? false : "position"}
@@ -182,6 +182,7 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
                   >
                     <CartLine
                       item={item}
+                      priority={position === 0}
                       onQuantity={(quantity) => updateQuantity(item.slug, item.volume, quantity)}
                       onRemove={() => removeItem(item.slug, item.volume)}
                     />

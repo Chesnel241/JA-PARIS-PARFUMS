@@ -24,6 +24,9 @@ export function AddToCart({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [status, setStatus] = useState<"idle" | "added" | "limited">("idle");
   const [showBar, setShowBar] = useState(false);
+  // Animation du prix seulement après un changement de contenance (jamais au
+  // premier rendu : rendu serveur et client identiques).
+  const [variantChanged, setVariantChanged] = useState(false);
   const buyRowRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | undefined>(undefined);
 
@@ -64,6 +67,7 @@ export function AddToCart({ product }: { product: Product }) {
 
   const selectVariant = (next: string) => {
     setVolume(next);
+    setVariantChanged(true);
     setQuantity(1);
     setStatus("idle");
   };
@@ -110,7 +114,7 @@ export function AddToCart({ product }: { product: Product }) {
         <motion.span
           className="cm-purchase__amount"
           key={selected ? `${selected.volume}-${selected.price}` : "none"}
-          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          initial={variantChanged && !reduceMotion ? { opacity: 0, y: 6 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
         >

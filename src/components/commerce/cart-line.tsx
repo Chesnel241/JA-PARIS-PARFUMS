@@ -16,12 +16,14 @@ export function CartLine({
   onRemove,
   onNavigate,
   size = "md",
+  priority = false,
 }: {
   item: CartItem;
   onQuantity: (quantity: number) => void;
   onRemove: () => void;
   onNavigate?: () => void;
   size?: "sm" | "md";
+  priority?: boolean;
 }) {
   const src = safeImageSrc(item.image);
   const max = maxQuantityForStock(item.stock);
@@ -35,6 +37,7 @@ export function CartLine({
           src={src}
           alt=""
           fill
+          priority={priority}
           sizes={size === "sm" ? "96px" : "(max-width: 760px) 104px, 132px"}
           unoptimized={isUnoptimizedImage(src)}
           className={isVectorImage(src) ? "is-contained" : "is-cover"}

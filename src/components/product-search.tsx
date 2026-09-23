@@ -156,7 +156,7 @@ export function ProductSearch({ products, initialQuery = "" }: { products: Produ
           value={query}
           onChange={(event) => setQuery(event.target.value.slice(0, 80))}
           onKeyDown={onInputKeyDown}
-          placeholder="Un nom, une note : rose, vanille…"
+          placeholder="Rose, vanille, Or Solaire…"
           autoFocus
           autoComplete="off"
           enterKeyHint="search"
@@ -174,7 +174,7 @@ export function ProductSearch({ products, initialQuery = "" }: { products: Produ
 
       {trimmed && results.length > 0 ? (
         <ul id="cm-search-results" ref={resultsRef} className="cm-search__results" onKeyDown={onResultsKeyDown} aria-label="Résultats de recherche">
-          <AnimatePresence initial={!reduceMotion} mode="popLayout">
+          <AnimatePresence initial={false} mode="popLayout">
             {results.map((product, position) => (
               <motion.li
                 key={product.slug}
@@ -184,7 +184,7 @@ export function ProductSearch({ products, initialQuery = "" }: { products: Produ
                 exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{ duration: 0.35, delay: reduceMotion ? 0 : Math.min(position, 6) * 0.04, ease: [0.22, 1, 0.36, 1] }}
               >
-                <CommerceProductCard product={product} sizes="(max-width: 760px) 50vw, 25vw" />
+                <CommerceProductCard product={product} priority={position < 2} sizes="(max-width: 760px) 50vw, 25vw" />
               </motion.li>
             ))}
           </AnimatePresence>
@@ -226,6 +226,7 @@ function CategoryTile({ href, label, image: rawImage }: { href: string; label: s
             src={image}
             alt=""
             fill
+            priority
             sizes="(max-width: 760px) 50vw, 360px"
             unoptimized={isUnoptimizedImage(image)}
             className={isVectorImage(image) ? "is-contained" : "is-cover"}
