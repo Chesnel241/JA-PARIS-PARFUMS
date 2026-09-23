@@ -27,7 +27,7 @@ const IGNORED_CONSOLE = [
   // les redirections (ex. préchargement du lien /admin du pied de page → /connexion-admin), ce qui
   // échoue localement/en CI mais pas en production (HTTPS). Next retombe alors sur une navigation normale.
   ...(BASE_URL.startsWith("http://")
-    ? [/net::ERR_SSL_PROTOCOL_ERROR \(https:\/\//, /Failed to fetch RSC payload for .* Falling back to browser navigation/s]
+    ? [/net::ERR_SSL_PROTOCOL_ERROR \(https:\/\//, /Failed to fetch RSC payload for [^]*Falling back to browser navigation/]
     : []),
 ];
 

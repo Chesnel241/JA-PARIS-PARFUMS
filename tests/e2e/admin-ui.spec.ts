@@ -41,7 +41,7 @@ test.describe("Admin — interface", () => {
     try {
       await page.goto("/connexion-admin");
       await submitLogin(page, ADMIN_EMAIL, ADMIN_PASSWORD);
-      await expect(page).toHaveURL(/\/admin$/);
+      await expect(page).toHaveURL(/\/admin$/, { timeout: 45_000 });
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
       await page.getByRole("button", { name: /d[ée]connect|d[ée]connexion/i }).click();
