@@ -22,7 +22,7 @@ export async function expectStatus(response: APIResponse, status: number | numbe
   const expected = Array.isArray(status) ? status : [status];
   if (!expected.includes(response.status())) {
     const body = await response.text().catch(() => "<corps illisible>");
-    expect(expected, `${context} ${response.request().method()} ${response.url()} → ${response.status()} : ${body.slice(0, 500)}`).toContain(response.status());
+    expect(expected, `${context} ${response.url()} → ${response.status()} : ${body.slice(0, 500)}`).toContain(response.status());
   }
 }
 
