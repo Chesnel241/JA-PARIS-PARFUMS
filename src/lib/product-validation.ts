@@ -1,8 +1,11 @@
 import { z } from "zod";
+import "@/lib/zod-fr";
 
 // An image reference must be either a site-relative path ("/foo.jpg") or an
 // absolute http(s) URL. This rejects dangerous schemes such as "javascript:",
 // "data:" or "vbscript:" that could be reflected into the DOM and cause XSS.
+// Backslashes and control characters are refused too ("/\evil.com" is read
+// as the protocol-relative "//evil.com" by browsers).
 export const imageReferenceSchema = z
   .string()
   .trim()
@@ -10,6 +13,7 @@ export const imageReferenceSchema = z
   .max(500)
   .refine(
     (value) => {
+      if (/[\\\u0000-\u001f\u007f]/.test(value)) return false;
       if (value.startsWith("/") && !value.startsWith("//")) return true;
       try {
         const url = new URL(value);

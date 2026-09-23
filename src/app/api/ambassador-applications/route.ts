@@ -1,23 +1,21 @@
-import { NextResponse } from "next/server";
+import { handleApi, json, parseJson } from "@/lib/api";
 import { createApplication } from "@/lib/community-service";
 import { applicationInputSchema } from "@/lib/community-validation";
+import { RATE_LIMITS, enforceRateLimit } from "@/lib/rate-limit";
+import { revalidateApplications } from "@/lib/revalidate";
 
 // Candidature publique « Devenir ambassadrice ».
 export async function POST(request: Request) {
-  const parsed = applicationInputSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Merci de vérifier les champs du formulaire.", fields: parsed.error.flatten() }, { status: 422 });
-  }
+  return handleApi("ambassador-applications:create", async () => {
+    const parsed = await parseJson(request, applicationInputSchema, { message: "Merci de vérifier les champs du formulaire." });
 
-  // Pot de miel rempli : on répond comme si tout allait bien, sans rien enregistrer.
-  const { website, ...input } = parsed.data;
-  if (website) return NextResponse.json({ ok: true }, { status: 201 });
+    // Pot de miel rempli : on répond comme si tout allait bien, sans rien enregistrer.
+    const { website, ...input } = parsed;
+    if (website) return json({ ok: true }, { status: 201 });
 
-  try {
+    await enforceRateLimit(request, RATE_LIMITS.applications, "Vous avez déjà envoyé plusieurs candidatures.");
     await createApplication(input);
-    return NextResponse.json({ ok: true }, { status: 201 });
-  } catch (error) {
-    console.error("[applications] création impossible :", error);
-    return NextResponse.json({ error: "Votre candidature n'a pas pu être envoyée. Réessayez dans un instant." }, { status: 500 });
-  }
+    revalidateApplications();
+    return json({ ok: true }, { status: 201 });
+  });
 }

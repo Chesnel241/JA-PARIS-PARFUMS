@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "test:auth": "node --env-file=.env scripts/test-auth.mjs",
     "test:crud": "node --env-file=.env scripts/test-product-crud.mjs",
+    "test:api": "node --env-file=.env scripts/test-api.mjs",
     "docker:build": "docker compose -f docker-compose.prod.yml build",
     "docker:up": "docker compose -f docker-compose.prod.yml up -d",
     "docker:down": "docker compose -f docker-compose.prod.yml down"

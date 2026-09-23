@@ -1,10 +1,49 @@
-import { NextResponse } from "next/server";
-import { getCurrentStaff } from "@/lib/current-staff";
+import { z } from "zod";
+import { handleApi, json, parseQuery, requireApiStaff } from "@/lib/api";
 import { listApplications } from "@/lib/community-service";
-import { applicationStatusSchema } from "@/lib/community-validation";
+import { csvDate, csvResponse, toCsv } from "@/lib/csv";
 
+const STATUS_LABELS = { NEW: "Nouvelle", CONTACTED: "Contactée", ACCEPTED: "Acceptée", REJECTED: "Refusée" } as const;
+
+const querySchema = z.object({
+  // Vide, « all » ou absent = toutes les candidatures.
+  status: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .optional()
+    .transform((value) => (value && value !== "ALL" ? value : undefined))
+    .pipe(z.enum(["NEW", "CONTACTED", "ACCEPTED", "REJECTED"]).optional()),
+  format: z.enum(["json", "csv"]).optional(),
+});
+
+// Liste des candidatures (JSON) ou export CSV (?format=csv).
 export async function GET(request: Request) {
-  if (!(await getCurrentStaff())) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
-  const status = applicationStatusSchema.shape.status.safeParse(new URL(request.url).searchParams.get("status"));
-  return NextResponse.json({ applications: await listApplications(status.success ? status.data : undefined) });
+  return handleApi("admin/applications:list", async () => {
+    await requireApiStaff();
+    const { status, format } = parseQuery(request, querySchema);
+    const applications = await listApplications(status);
+
+    if (format === "csv") {
+      return csvResponse(
+        "candidatures-ambassadrices",
+        toCsv(
+          ["Date", "Prénom", "Nom", "E-mail", "Téléphone", "Instagram", "Ville", "Statut", "Message"],
+          applications.map((application) => [
+            csvDate(application.createdAt),
+            application.firstName,
+            application.lastName,
+            application.email,
+            application.phone,
+            application.instagram,
+            application.city,
+            STATUS_LABELS[application.status],
+            application.message,
+          ]),
+        ),
+      );
+    }
+
+    return json({ applications });
+  });
 }

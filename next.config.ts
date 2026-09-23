@@ -4,7 +4,9 @@ const isProduction = process.env.NODE_ENV === "production";
 
 // Content-Security-Policy. Next.js (App Router) injecte des scripts/styles inline,
 // d'où 'unsafe-inline' (pas de pipeline de nonce). Le reste est verrouillé à
-// l'origine + les ressources réellement chargées (Google Fonts, images, Lydia).
+// l'origine + les ressources réellement chargées (Google Fonts, images).
+// Le paiement Lydia est une simple navigation (window.location / lien) : il
+// n'est concerné ni par connect-src ni par form-action.
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -15,9 +17,13 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
   "connect-src 'self'",
   "frame-src 'self' https://pay.lydia.me",
-  "upgrade-insecure-requests",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  // En local (http://localhost) cette directive casserait le chargement des ressources.
+  ...(isProduction ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [
@@ -26,13 +32,19 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "off" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  ...(isProduction ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }] : []),
 ];
+
+const noIndexHeaders = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   output: "standalone",
+  // Racine du projet explicite (évite l'inférence d'un dossier parent quand
+  // plusieurs package-lock.json existent, ex. worktrees).
+  outputFileTracingRoot: process.cwd(),
   images: {
     unoptimized: false,
     remotePatterns: [
@@ -41,10 +53,12 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      {
-        source: "/:path*",
-        headers: securityHeaders,
-      },
+      { source: "/:path*", headers: securityHeaders },
+      { source: "/admin/:path*", headers: noIndexHeaders },
+      { source: "/admin", headers: noIndexHeaders },
+      { source: "/connexion-admin", headers: noIndexHeaders },
+      // Toute l'API sauf les images publiques (/api/media/…), indexables.
+      { source: "/api/:path((?!media/).*)", headers: noIndexHeaders },
     ];
   },
 };

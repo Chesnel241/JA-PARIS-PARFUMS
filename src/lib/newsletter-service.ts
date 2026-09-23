@@ -1,11 +1,8 @@
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
-export const newsletterInputSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(160),
-  // Pot de miel anti-robots (champ invisible côté formulaire).
-  website: z.string().max(200).optional(),
-});
+// Le schéma vit dans newsletter-validation.ts (utilisable côté client) ; il est
+// ré-exporté ici pour compatibilité.
+export { newsletterInputSchema, type NewsletterInput } from "@/lib/newsletter-validation";
 
 // Idempotent : une adresse déjà inscrite ne provoque pas d'erreur.
 export function subscribeToNewsletter(email: string) {
@@ -14,6 +11,10 @@ export function subscribeToNewsletter(email: string) {
 
 export function listNewsletterSubscribers() {
   return prisma.newsletterSubscriber.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export function countNewsletterSubscribers() {
+  return prisma.newsletterSubscriber.count();
 }
 
 export function deleteNewsletterSubscriber(id: string) {

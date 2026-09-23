@@ -1,9 +1,32 @@
+import { cache } from "react";
 import { Role } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function getCurrentStaff() {
-  const session = await auth();
+export const STAFF_ROLES: readonly Role[] = [Role.ADMIN, Role.EDITOR];
+
+export function isStaffRole(role: unknown): role is Role {
+  return STAFF_ROLES.includes(role as Role);
+}
+
+// Session Auth.js de la requête courante. Mémorisée par requête (React.cache)
+// et ne lève jamais : une session illisible (secret absent ou changé, cookie
+// corrompu) équivaut à « non connecté ».
+export const getSession = cache(async () => {
+  try {
+    return await auth();
+  } catch (error) {
+    console.error("[auth] lecture de la session impossible :", error);
+    return null;
+  }
+});
+
+// Membre de l'équipe (ADMIN ou EDITOR) connecté et actif, relu en base à
+// chaque requête (un compte désactivé perd l'accès immédiatement).
+// Mémorisé par requête : le layout admin et la page peuvent l'appeler tous
+// les deux sans double requête.
+export const getCurrentStaff = cache(async () => {
+  const session = await getSession();
   if (!session?.user?.id) return null;
 
   const user = await prisma.user.findUnique({
@@ -11,6 +34,6 @@ export async function getCurrentStaff() {
     select: { id: true, name: true, email: true, role: true, isActive: true },
   });
 
-  if (!user?.isActive || (user.role !== Role.ADMIN && user.role !== Role.EDITOR)) return null;
+  if (!user?.isActive || !isStaffRole(user.role)) return null;
   return user;
-}
+});
