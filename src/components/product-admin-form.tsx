@@ -69,7 +69,7 @@ function toDraft(product?: ProductInput): Draft {
   };
 }
 
-const snapshot = (draft: Draft) => JSON.stringify({ ...draft, variants: draft.variants.map(({ key: _key, ...rest }) => rest) });
+const snapshot = (draft: Draft) => JSON.stringify({ ...draft, variants: draft.variants.map((variant) => [variant.sku, variant.volume, variant.price, variant.stock, variant.isActive]) });
 
 function validate(draft: Draft): FieldErrors {
   const errors: FieldErrors = {};
