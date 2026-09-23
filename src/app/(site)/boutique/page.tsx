@@ -1,12 +1,29 @@
 import { ProductCategory } from "@prisma/client";
-import { ProductCard } from "@/components/product-card";
 import { getPublicProducts } from "@/lib/catalog";
-
-export const metadata = { title: "La collection" };
+import { CatalogPage } from "@/components/site/catalog-page";
+import { pageMetadata } from "@/components/site/seo";
 
 export const dynamic = "force-dynamic";
 
+export function generateMetadata() {
+  return pageMetadata({
+    title: "Parfums",
+    description: "Les parfums JAE Paris, composés à Paris. Eaux et extraits de parfum, livraison offerte dès 50 €.",
+    path: "/boutique",
+  });
+}
+
 export default async function ShopPage() {
   const products = await getPublicProducts(ProductCategory.PARFUM);
-  return <div className="page-shell shop-page"><header className="page-intro"><p className="eyebrow">La collection JAE</p><h1>Choisir son<br /><em>empreinte.</em></h1><p>Trois créations, trois manières d’habiter le monde. Prenez le temps de rencontrer celle qui vous ressemble.</p></header><div className="shop-toolbar"><span>{products.length} parfums</span><span>Extraits & eaux de parfum</span></div><div className="product-grid">{products.map((product, index) => <ProductCard key={product.slug} product={product} index={index} />)}</div></div>;
+  return (
+    <CatalogPage
+      current="/boutique"
+      eyebrow="La collection"
+      title="Les parfums"
+      lede="Composés à Paris, pensés comme une signature."
+      products={products}
+      unit={["parfum", "parfums"]}
+      empty={{ title: "La collection arrive bientôt.", text: "Nos parfums seront très prochainement disponibles." }}
+    />
+  );
 }
