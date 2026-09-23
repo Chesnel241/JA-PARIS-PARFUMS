@@ -149,12 +149,16 @@ model Article {
 model Ambassador {
   id          String   @id @default(cuid())
   name        String
+  role        String   @default("")
   photo       String
   description String
   instagram   String?
   isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 model Store {
@@ -164,9 +168,43 @@ model Store {
   city         String
   country      String
   phone        String?
-  openingHours Json
+  openingHours String
   image        String
   isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+enum ApplicationStatus {
+  NEW
+  CONTACTED
+  ACCEPTED
+  REJECTED
+}
+
+// Candidatures « Devenir ambassadrice » envoyées depuis le site public.
+model AmbassadorApplication {
+  id        String            @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  instagram String?
+  city      String?
+  message   String
+  status    ApplicationStatus @default(NEW)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([status, createdAt])
+}
+
+// Inscriptions au « Cercle JAE » (newsletter de la page d'accueil).
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }
