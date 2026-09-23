@@ -59,11 +59,22 @@ export function MediaLibrary({ assets }: { assets: Asset[] }) {
     });
     if (!ok) return;
     setDeletingId(asset.id);
-    const result = await adminRequest(`/api/admin/media/${asset.id}`, { method: "DELETE" });
+    let result = await adminRequest(`/api/admin/media/${asset.id}`, { method: "DELETE" });
+    if (!result.ok && result.status === 409) {
+      // 409 : l'API signale que le média est encore utilisé → suppression forcée sur confirmation.
+      const force = await confirm({
+        title: "Cette image est encore utilisée",
+        description: `${result.error}\n\nSi vous la supprimez, les emplacements concernés afficheront une image manquante jusqu'à ce que vous la remplaciez.`,
+        confirmLabel: "Supprimer quand même",
+        cancelLabel: "Conserver l'image",
+        tone: "danger",
+      });
+      if (!force) { setDeletingId(""); return; }
+      result = await adminRequest(`/api/admin/media/${asset.id}?force=1`, { method: "DELETE" });
+    }
     setDeletingId("");
     if (!result.ok) {
-      // 409 : l'API signale que le média est encore utilisé.
-      toast.apiError(result, result.status === 409 ? "Image encore utilisée" : "Suppression impossible");
+      toast.apiError(result, "Suppression impossible");
       return;
     }
     toast.success("Image supprimée");
