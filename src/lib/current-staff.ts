@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { Role } from "@prisma/client";
 import { auth } from "@/auth";
@@ -16,6 +17,9 @@ export const getSession = cache(async () => {
   try {
     return await auth();
   } catch (error) {
+    // Laisse passer les signaux internes de Next.js (rendu dynamique, redirect,
+    // notFound) : les avaler figerait les pages admin au build en « déconnecté ».
+    unstable_rethrow(error);
     console.error("[auth] lecture de la session impossible :", error);
     return null;
   }

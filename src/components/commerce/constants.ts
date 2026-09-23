@@ -5,4 +5,5 @@
 // masque lorsqu'on l'atteint pour ne pas couvrir le pied de page.
 export const PURCHASE_END_ID = "cm-purchase-end";
 
-export const LYDIA_PAYMENT_URL = "https://pay.lydia.me/l?t=jessicaa9zq1";
+// Source unique : src/lib/payment.ts.
+export { LYDIA_PAYMENT_URL } from "@/lib/payment";

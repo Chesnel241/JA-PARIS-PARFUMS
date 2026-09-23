@@ -61,7 +61,7 @@ function cartLabel(mounted: boolean, count: number) {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { count } = useCart();
+  const { count, openDrawer } = useCart();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -147,8 +147,18 @@ export function SiteHeader() {
             <Link className="header-icon" href="/recherche" aria-label="Rechercher" aria-current={pathname === "/recherche" ? "page" : undefined}>
               <Search aria-hidden size={20} strokeWidth={1.5} />
             </Link>
-            {/* Lien panier conservé (le tiroir panier sera branché à l'intégration). */}
-            <Link className="header-icon bag-link" href="/panier" aria-label={cartLabel(mounted, count)}>
+            {/* Ouvre le tiroir panier ; reste un vrai lien vers /panier (nouvel onglet, sans JS, déjà sur /panier). */}
+            <Link
+              className="header-icon bag-link"
+              href="/panier"
+              aria-haspopup="dialog"
+              aria-label={cartLabel(mounted, count)}
+              onClick={(event) => {
+                if (pathname === "/panier" || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                event.preventDefault();
+                openDrawer();
+              }}
+            >
               <ShoppingBag aria-hidden size={20} strokeWidth={1.5} />
               {mounted && count > 0 ? <CartBadge count={count} /> : null}
             </Link>

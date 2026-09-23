@@ -44,6 +44,9 @@ export async function GET() {
     { loc: `${baseUrl}/journal`, lastmod: journalUpdate, changefreq: "weekly", priority: "0.7" },
     { loc: `${baseUrl}/ambassadrices`, changefreq: "monthly", priority: "0.6" },
     { loc: `${baseUrl}/boutiques`, changefreq: "monthly", priority: "0.6" },
+    { loc: `${baseUrl}/cgv`, changefreq: "yearly", priority: "0.3" },
+    { loc: `${baseUrl}/mentions-legales`, changefreq: "yearly", priority: "0.3" },
+    { loc: `${baseUrl}/confidentialite`, changefreq: "yearly", priority: "0.3" },
     ...products.map((product) => ({ loc: `${baseUrl}/produit/${encodeURIComponent(product.slug)}`, lastmod: product.updatedAt, changefreq: "weekly", priority: "0.8" })),
     ...articles.map((article) => ({ loc: `${baseUrl}/journal/${encodeURIComponent(article.slug)}`, lastmod: article.updatedAt, changefreq: "monthly", priority: "0.6" })),
   ];
