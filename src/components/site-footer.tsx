@@ -41,9 +41,9 @@ export function SiteFooter() {
         <div className="section-shell footer-cta">
           <div>
             <p className="eyebrow">Programme ambassadrices</p>
-            <p className="footer-cta-title">Portez <em>le sillage</em> avec nous</p>
+            <p className="footer-cta-title">Portez le sillage avec nous</p>
           </div>
-          <Link className="primary-button light" href="/ambassadrices#candidature" data-magnetic="0.2">
+          <Link className="primary-button light" href="/ambassadrices#candidature">
             Proposer ma candidature <ArrowRight aria-hidden />
           </Link>
         </div>
@@ -68,12 +68,8 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <Link className="footer-signature" href="/" aria-label="JAE Paris — accueil">
-          <span aria-hidden="true">JAE</span>
-          <small aria-hidden="true">Paris</small>
-        </Link>
-
         <div className="section-shell footer-bottom">
+          <Link className="wordmark footer-wordmark" href="/" aria-label="JAE Paris — accueil"><span>JAE</span><small>Paris</small></Link>
           <p>© {new Date().getFullYear()} JAE Paris</p>
           <Link href="/admin" prefetch={false} className="footer-staff">Espace maison</Link>
         </div>

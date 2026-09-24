@@ -10,8 +10,6 @@ import { ProductGallery } from "@/components/commerce/product-gallery";
 import { RelatedProducts } from "@/components/commerce/related-products";
 import { safeImageSrc } from "@/components/commerce/media";
 import { getPublicProduct, getPublicProducts } from "@/lib/catalog";
-import { RevealText } from "@/components/experience/reveal-text";
-import { SillageCanvas } from "@/components/experience/sillage-canvas";
 import type { Product } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -140,17 +138,13 @@ export default async function ProductPage({ params }: PageProps) {
 
       <div className="cm-pdp__main">
         <div className="cm-pdp__media">
-          <ProductGallery
-            images={product.images}
-            name={product.name}
-            backdrop={isAccessory ? undefined : <SillageCanvas tone="day" intensity={0.9} />}
-          />
+          <ProductGallery images={product.images} name={product.name} />
         </div>
 
         <div className="cm-pdp__info">
           <div className="cm-pdp__sticky">
             <p className="cm-pdp__kicker">{isAccessory ? "Accessoire" : "Parfum"} · JAE Paris</p>
-            <RevealText as="h1" mode="load" className="cm-pdp__title" delay={0.1}>{product.name}</RevealText>
+            <h1 className="cm-pdp__title">{product.name}</h1>
             {product.subtitle ? <p className="cm-pdp__subtitle">{product.subtitle}</p> : null}
             <AddToCart product={product} />
             {product.description ? <p className="cm-pdp__description">{product.description}</p> : null}

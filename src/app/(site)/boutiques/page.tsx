@@ -41,7 +41,7 @@ export default async function StoresPage() {
               <li key={store.id}>
                 <Reveal as="article" className="store-card">
                   <div className="store-card-media">
-                    <Image src={store.image} alt={`Boutique ${store.name}`} fill sizes="(min-width: 900px) 58vw, 100vw" priority={index === 0} unoptimized={isApiMedia(store.image)} className="parallax-img" data-parallax="0.08" />
+                    <Image src={store.image} alt={`Boutique ${store.name}`} fill sizes="(min-width: 900px) 58vw, 100vw" priority={index === 0} unoptimized={isApiMedia(store.image)} />
                   </div>
                   <div className="store-card-body">
                     <p className="eyebrow">{store.city}</p>

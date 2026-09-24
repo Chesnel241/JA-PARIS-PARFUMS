@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
+import { Archivo, Cormorant_Garamond, Inter } from "next/font/google";
 import { SITE_NAME, getSiteUrl } from "@/components/site/seo";
 import "./globals.css";
 
@@ -11,6 +11,8 @@ const display = Cormorant_Garamond({
   display: "swap",
 });
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Boutique : sans-serif large et géométrique (axe de chasse « wdth »), en capitales.
+const brand = Archivo({ subsets: ["latin"], variable: "--font-brand", axes: ["wdth"], display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -41,7 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
-      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+      <body className={`${display.variable} ${sans.variable} ${brand.variable}`}>{children}</body>
     </html>
   );
 }

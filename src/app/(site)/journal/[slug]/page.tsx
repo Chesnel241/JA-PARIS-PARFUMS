@@ -71,7 +71,7 @@ export default async function ArticlePage({ params }: Params) {
           {article.excerpt ? <p className="article-excerpt">{article.excerpt}</p> : null}
         </Reveal>
         <div className="article-cover">
-          <Image src={cover} alt="" fill priority sizes="(min-width: 1280px) 1200px, 100vw" unoptimized={isApiMedia(cover)} className="parallax-img" data-parallax="0.08" />
+          <Image src={cover} alt="" fill priority sizes="(min-width: 1280px) 1200px, 100vw" unoptimized={isApiMedia(cover)} />
         </div>
         <div className="article-body">
           {paragraphs.map((paragraph, index) => (
