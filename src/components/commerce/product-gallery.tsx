@@ -36,7 +36,12 @@ function scrollToSlide(track: HTMLDivElement | null, index: number, smooth: bool
   track.scrollTo({ left: index * track.clientWidth, behavior: smooth ? "smooth" : "auto" });
 }
 
-export function ProductGallery({ images, name }: { images: string[]; name: string }) {
+export function ProductGallery({ images, name, backdrop }: {
+  images: string[];
+  name: string;
+  /** Décor animé optionnel placé derrière les visuels (ex. fumée « sillage »). */
+  backdrop?: React.ReactNode;
+}) {
   const sources = (images.length > 0 ? images : [""]).map(safeImageSrc).slice(0, 12);
   const count = sources.length;
   const trackRef = useRef<HTMLDivElement>(null);
@@ -92,7 +97,8 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
         </div>
       ) : null}
 
-      <div className="cm-gallery__stage">
+      <div className={`cm-gallery__stage${backdrop ? " has-backdrop" : ""}`}>
+        {backdrop ? <div className="cm-gallery__backdrop" aria-hidden="true">{backdrop}</div> : null}
         <div
           ref={trackRef}
           className="cm-gallery__track"

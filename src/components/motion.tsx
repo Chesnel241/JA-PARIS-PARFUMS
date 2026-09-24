@@ -1,11 +1,15 @@
 "use client";
 
-// Couche de mouvement du site. Tout passe par LazyMotion + domAnimation et les
-// composants `m` (bundle réduit), sous MotionConfig reducedMotion="user".
-// Principes : animations d'opacité / transform uniquement (aucun décalage de
-// mise en page), jamais bloquantes, désactivées si prefers-reduced-motion.
-import type { ReactNode } from "react";
-import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m, useReducedMotion, type Transition, type Variants } from "framer-motion";
+// Couche de mouvement du site.
+// - Les apparitions au défilement (Reveal, Stagger) ne dépendent plus de
+//   framer-motion : ce sont de simples attributs `data-animate` animés en CSS
+//   et déclenchés par ScrollAnimator (src/components/experience). Rendu
+//   identique côté serveur, zéro décalage de mise en page, respect de
+//   prefers-reduced-motion, contenu visible sans JavaScript.
+// - framer-motion (LazyMotion + composants `m`) reste utilisé pour les
+//   micro-interactions d'interface (menu, tiroir, galerie, confirmations).
+import type { CSSProperties, ReactNode } from "react";
+import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m, useReducedMotion, type Transition } from "framer-motion";
 
 export { AnimatePresence, m, useReducedMotion };
 // Alias rétrocompatible : `motion.div` depuis ce module reste léger (m.div).
@@ -21,24 +25,10 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const viewport = { once: true, margin: "0px 0px -8% 0px" } as const;
-
 type RevealTag = "div" | "section" | "header" | "li" | "article" | "p" | "figure";
 
-function tagFor(as: RevealTag) {
-  switch (as) {
-    case "section": return m.section;
-    case "header": return m.header;
-    case "li": return m.li;
-    case "article": return m.article;
-    case "p": return m.p;
-    case "figure": return m.figure;
-    default: return m.div;
-  }
-}
-
-/** Révélation sobre au scroll (une seule fois). */
-export function Reveal({ children, className, as = "div", delay = 0, y = 18, id }: {
+/** Révélation au défilement (une seule fois) : fondu montant, ou simple fondu si y = 0. */
+export function Reveal({ children, className, as: Tag = "div", delay = 0, y = 18, id }: {
   children: ReactNode;
   className?: string;
   as?: RevealTag;
@@ -46,47 +36,28 @@ export function Reveal({ children, className, as = "div", delay = 0, y = 18, id 
   y?: number;
   id?: string;
 }) {
-  const reduce = useReducedMotion();
-  const Tag = tagFor(as);
   return (
-    <Tag
-      id={id}
-      className={className}
-      data-reveal=""
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={viewport}
-      transition={reduce ? { duration: 0 } : { duration: 0.8, delay, ease: EASE_OUT }}
-    >
+    <Tag id={id} className={className} data-animate={y === 0 ? "fade" : "fade-up"} style={{ "--d": delay } as CSSProperties}>
       {children}
     </Tag>
   );
 }
 
-/** Conteneur d'apparition échelonnée (grilles, listes). */
-export function Stagger({ children, className, as = "div", gap = 0.08, label }: {
+/** Conteneur d'apparition échelonnée (grilles, listes) : chaque enfant apparaît à son tour. */
+export function Stagger({ children, className, as: Tag = "div", gap = 0.08, label }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "ul";
   gap?: number;
   label?: string;
 }) {
-  const reduce = useReducedMotion();
-  const variants: Variants = { hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : gap } } };
-  const Tag = as === "ul" ? m.ul : m.div;
   return (
-    <Tag className={className} aria-label={label} initial="hidden" whileInView="show" viewport={viewport} variants={variants}>
+    <Tag className={className} aria-label={label} data-stagger="" style={{ "--stagger": `${gap}s` } as CSSProperties}>
       {children}
     </Tag>
   );
 }
 
-export function StaggerItem({ children, className, as = "div" }: { children: ReactNode; className?: string; as?: "div" | "li" }) {
-  const reduce = useReducedMotion();
-  const variants: Variants = {
-    hidden: { opacity: 0, y: 22 },
-    show: { opacity: 1, y: 0, transition: reduce ? { duration: 0 } : { duration: 0.7, ease: EASE_OUT } },
-  };
-  const Tag = as === "li" ? m.li : m.div;
-  return <Tag className={className} data-reveal="" variants={variants}>{children}</Tag>;
+export function StaggerItem({ children, className, as: Tag = "div" }: { children: ReactNode; className?: string; as?: "div" | "li" }) {
+  return <Tag className={className} data-animate="rise">{children}</Tag>;
 }

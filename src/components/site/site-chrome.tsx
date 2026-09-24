@@ -3,11 +3,17 @@ import { CartProvider } from "@/lib/cart";
 import { MotionProvider } from "@/components/motion";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { SmoothScroll } from "@/components/experience/smooth-scroll";
+import { Cursor } from "@/components/experience/cursor";
+import { PageTransition } from "@/components/experience/page-transition";
+import { ScrollAnimator } from "@/components/experience/scroll-animator";
+import { Parallax } from "@/components/experience/parallax";
 
-// Sans JavaScript, les éléments « révélés » au scroll restent visibles.
-const noScriptStyle = "<style>[data-reveal]{opacity:1!important;transform:none!important}</style>";
-
-/** Habillage commun des pages publiques : lien d'évitement, en-tête, contenu, pied de page. */
+/**
+ * Habillage commun des pages publiques : lien d'évitement, en-tête, contenu,
+ * pied de page, et les couches d'expérience (défilement lissé, curseur,
+ * transitions de page, révélations au défilement, parallaxe, grain).
+ */
 export function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <CartProvider>
@@ -18,7 +24,12 @@ export function SiteChrome({ children }: { children: ReactNode }) {
           <main id="contenu" tabIndex={-1}>{children}</main>
           <SiteFooter />
         </div>
-        <noscript dangerouslySetInnerHTML={{ __html: noScriptStyle }} />
+        <div className="film-grain" aria-hidden="true" />
+        <PageTransition />
+        <Cursor />
+        <SmoothScroll />
+        <ScrollAnimator />
+        <Parallax />
       </MotionProvider>
     </CartProvider>
   );

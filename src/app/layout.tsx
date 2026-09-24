@@ -6,7 +6,7 @@ import "./globals.css";
 const display = Cormorant_Garamond({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["400", "500"],
+  weight: ["300", "400", "500"],
   style: ["normal", "italic"],
   display: "swap",
 });
@@ -28,10 +28,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+// Posé avant le premier affichage : permet au CSS de préparer les animations
+// d'apparition, sans jamais masquer le contenu si JavaScript ne s'exécute pas
+// (voir le filet de sécurité « reveal-failsafe » dans src/styles/experience.css).
+const bootScript = "document.documentElement.classList.add('js')";
+
 // Layout racine minimal : la boutique ((site)) et l'administration (admin,
 // connexion-admin) ont chacune leur propre layout et leur propre feuille de style.
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr"><body className={`${display.variable} ${sans.variable}`}>{children}</body></html>
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: bootScript }} />
+      </head>
+      <body className={`${display.variable} ${sans.variable}`}>{children}</body>
+    </html>
   );
 }

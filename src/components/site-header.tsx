@@ -114,10 +114,12 @@ export function SiteHeader() {
   }, []);
 
   const state = open ? "menu" : overHero && !scrolled ? "overlay" : "solid";
+  // Par-dessus le héro de nuit de l'accueil, l'en-tête passe en clair.
+  const tone = state === "overlay" ? "light" : "dark";
 
   return (
     <>
-      <header className="site-header" data-state={state} data-hidden={hidden && !open ? "" : undefined}>
+      <header className="site-header" data-state={state} data-tone={tone} data-hidden={hidden && !open ? "" : undefined}>
         <div className="site-header-inner">
           <button
             ref={burgerRef}
@@ -135,7 +137,9 @@ export function SiteHeader() {
             <ul>
               {NAV_LINKS.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined}>{link.label}</Link>
+                  <Link href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined}>
+                    <span className="nav-roll"><span>{link.label}</span></span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -151,6 +155,7 @@ export function SiteHeader() {
             <Link
               className="header-icon bag-link"
               href="/panier"
+              data-no-transition=""
               aria-haspopup="dialog"
               aria-label={cartLabel(mounted, count)}
               onClick={(event) => {
