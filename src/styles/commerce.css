@@ -159,7 +159,7 @@ img.is-cover { object-fit: cover; }
 .cm-pdp__info { min-width: 0; }
 .cm-pdp__sticky { position: sticky; top: calc(var(--cm-header) + 24px); max-width: 500px; padding: 12px 0 40px; }
 .cm-pdp__kicker { margin: 0 0 18px; color: var(--cm-muted); font-size: 11px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; }
-.cm-pdp__title { margin: 0; font: 500 clamp(46px, 4.6vw, 76px)/.95 var(--font-display), serif; letter-spacing: -.025em; text-wrap: balance; }
+.cm-pdp__title { margin: 0; font: 300 clamp(50px, 5.4vw, 92px)/.95 var(--font-display), serif; letter-spacing: -.03em; text-wrap: balance; }
 .cm-pdp__subtitle { margin: 14px 0 0; color: var(--cm-muted); font-size: 14px; letter-spacing: .03em; }
 .cm-pdp__description { margin: 34px 0 0; padding-top: 28px; border-top: 1px solid var(--cm-hairline); color: color-mix(in srgb, var(--ink) 82%, var(--paper)); font: 400 20px/1.6 var(--font-display), serif; }
 
@@ -171,6 +171,9 @@ img.is-cover { object-fit: cover; }
 .cm-gallery__thumb:hover { opacity: 1; }
 .cm-gallery__thumb.is-active { opacity: 1; border-color: var(--ink); }
 .cm-gallery__stage { position: relative; min-width: 0; }
+.cm-gallery__backdrop { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: var(--cm-stage); pointer-events: none; }
+.cm-gallery__stage.has-backdrop .cm-gallery__track { position: relative; z-index: 1; background: transparent; }
+.cm-gallery__stage.has-backdrop .cm-gallery__track img.is-contained { filter: drop-shadow(0 36px 48px rgba(23, 20, 15, 0.22)); }
 .cm-gallery__track {
   display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain;
   width: 100%; aspect-ratio: 4 / 5; max-height: calc(100svh - var(--cm-header) - 90px); min-height: 460px; background: var(--cm-stage);

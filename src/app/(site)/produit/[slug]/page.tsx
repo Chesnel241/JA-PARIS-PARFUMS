@@ -10,6 +10,8 @@ import { ProductGallery } from "@/components/commerce/product-gallery";
 import { RelatedProducts } from "@/components/commerce/related-products";
 import { safeImageSrc } from "@/components/commerce/media";
 import { getPublicProduct, getPublicProducts } from "@/lib/catalog";
+import { RevealText } from "@/components/experience/reveal-text";
+import { SillageCanvas } from "@/components/experience/sillage-canvas";
 import type { Product } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -138,13 +140,17 @@ export default async function ProductPage({ params }: PageProps) {
 
       <div className="cm-pdp__main">
         <div className="cm-pdp__media">
-          <ProductGallery images={product.images} name={product.name} />
+          <ProductGallery
+            images={product.images}
+            name={product.name}
+            backdrop={isAccessory ? undefined : <SillageCanvas tone="day" intensity={0.9} />}
+          />
         </div>
 
         <div className="cm-pdp__info">
           <div className="cm-pdp__sticky">
             <p className="cm-pdp__kicker">{isAccessory ? "Accessoire" : "Parfum"} · JAE Paris</p>
-            <h1 className="cm-pdp__title">{product.name}</h1>
+            <RevealText as="h1" mode="load" className="cm-pdp__title" delay={0.1}>{product.name}</RevealText>
             {product.subtitle ? <p className="cm-pdp__subtitle">{product.subtitle}</p> : null}
             <AddToCart product={product} />
             {product.description ? <p className="cm-pdp__description">{product.description}</p> : null}
@@ -161,7 +167,7 @@ export default async function ProductPage({ params }: PageProps) {
         <section className={`cm-story${hasNotes ? "" : " is-single"}`} aria-labelledby="cm-story-title">
           <div className="cm-story__text">
             <p className="eyebrow">Le récit</p>
-            <h2 id="cm-story-title">{isAccessory ? <>Une pièce <em>à part.</em></> : <>L’histoire <em>d’un sillage.</em></>}</h2>
+            <h2 id="cm-story-title" data-animate="fade-up">{isAccessory ? <>Une pièce <em>à part.</em></> : <>L’histoire <em>d’un sillage.</em></>}</h2>
             {product.story ? <p>{product.story}</p> : null}
           </div>
           {hasNotes ? (
@@ -169,7 +175,7 @@ export default async function ProductPage({ params }: PageProps) {
               <h3>La signature olfactive</h3>
               <dl>
                 {NOTE_LEVELS.filter(({ key }) => product.notes[key].length > 0).map(({ key, label }, index) => (
-                  <div className="cm-notes__row" key={key}>
+                  <div className="cm-notes__row" key={key} data-animate="fade-up" style={{ "--d": index * 0.12 } as React.CSSProperties}>
                     <span className="cm-notes__index" aria-hidden="true">0{index + 1}</span>
                     <dt>{label}</dt>
                     <dd>{product.notes[key].join(" · ")}</dd>

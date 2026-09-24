@@ -29,7 +29,7 @@ export function ProductCard({ product, sizes = PRODUCT_CARD_SIZES, headingLevel 
 
   return (
     <article className="product-card" data-sold-out={soldOut ? "" : undefined}>
-      <Link href={`/produit/${product.slug}`} className="product-card-link">
+      <Link href={`/produit/${product.slug}`} className="product-card-link" data-cursor="Voir">
         <div className="product-card-media" data-has-alt={secondary ? "" : undefined}>
           <Image
             src={primary}
