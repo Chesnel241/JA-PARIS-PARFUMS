@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Menu, Search, ShoppingBag, X } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { AnimatePresence, EASE_OUT, m, useReducedMotion } from "@/components/motion";
-import { SillageCanvas } from "@/components/experience/sillage-canvas";
 
 export const NAV_LINKS = [
   { label: "Parfums", href: "/boutique" },
@@ -68,7 +67,6 @@ export function SiteHeader() {
   const [hidden, setHidden] = useState(false);
   const [mounted, setMounted] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
-  const overHero = pathname === "/";
 
   useEffect(() => setMounted(true), []);
 
@@ -114,13 +112,11 @@ export function SiteHeader() {
     burgerRef.current?.focus();
   }, []);
 
-  const state = open ? "menu" : overHero && !scrolled ? "overlay" : "solid";
-  // Par-dessus le héro de nuit de l'accueil, l'en-tête passe en clair.
-  const tone = state === "overlay" ? "light" : "dark";
+  const state = open ? "menu" : scrolled ? "scrolled" : "solid";
 
   return (
     <>
-      <header className="site-header" data-state={state} data-tone={tone} data-hidden={hidden && !open ? "" : undefined}>
+      <header className="site-header" data-state={state} data-hidden={hidden && !open ? "" : undefined}>
         <div className="site-header-inner">
           <button
             ref={burgerRef}
@@ -224,9 +220,9 @@ function MobileMenu({ pathname, onClose, cartText }: { pathname: string; onClose
   }, [onClose]);
 
   const item = (index: number) => ({
-    initial: { opacity: 0, y: 40 },
+    initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    transition: reduce ? { duration: 0 } : { duration: 0.8, delay: 0.25 + index * 0.06, ease: EASE_OUT },
+    transition: reduce ? { duration: 0 } : { duration: 0.5, delay: 0.12 + index * 0.04, ease: EASE_OUT },
   });
 
   return (
@@ -240,12 +236,9 @@ function MobileMenu({ pathname, onClose, cartText }: { pathname: string; onClose
       initial={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
       animate={reduce ? { opacity: 1 } : { clipPath: "inset(0% 0% 0% 0%)" }}
       exit={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
-      transition={{ duration: reduce ? 0 : 0.7, ease: [0.76, 0, 0.24, 1] }}
+      transition={{ duration: reduce ? 0 : 0.45, ease: [0.76, 0, 0.24, 1] }}
       data-lenis-prevent=""
     >
-      <div className="mobile-menu-bg" aria-hidden="true">
-        <SillageCanvas tone="night" intensity={0.8} />
-      </div>
       <div className="mobile-menu-bar">
         <button type="button" className="header-icon" aria-label="Fermer le menu" onClick={onClose}>
           <X aria-hidden size={22} strokeWidth={1.5} />
@@ -269,10 +262,10 @@ function MobileMenu({ pathname, onClose, cartText }: { pathname: string; onClose
       </nav>
 
       <m.div className="mobile-menu-foot" {...item(NAV_LINKS.length)}>
-        <Link className="primary-button light block" href="/ambassadrices#candidature" onClick={onClose}>
+        <Link className="primary-button block" href="/ambassadrices#candidature" onClick={onClose}>
           Devenir ambassadrice <ArrowRight aria-hidden />
         </Link>
-        <Link className="text-link light" href="/recherche" onClick={onClose}>
+        <Link className="text-link" href="/recherche" onClick={onClose}>
           <Search aria-hidden /> Rechercher
         </Link>
         <p>Livraison offerte dès 50 €</p>

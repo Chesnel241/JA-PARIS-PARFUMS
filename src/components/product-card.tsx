@@ -29,7 +29,7 @@ export function ProductCard({ product, sizes = PRODUCT_CARD_SIZES, headingLevel 
 
   return (
     <article className="product-card" data-sold-out={soldOut ? "" : undefined}>
-      <Link href={`/produit/${product.slug}`} className="product-card-link" data-cursor="Voir">
+      <Link href={`/produit/${product.slug}`} className="product-card-link">
         <div className="product-card-media" data-has-alt={secondary ? "" : undefined}>
           <Image
             src={primary}
@@ -52,10 +52,11 @@ export function ProductCard({ product, sizes = PRODUCT_CARD_SIZES, headingLevel 
             />
           ) : null}
           {soldOut ? <span className="product-card-badge">Épuisé</span> : null}
+          <span className="product-card-cta" aria-hidden="true">{soldOut ? "Voir la création" : "Découvrir"}</span>
         </div>
         <div className="product-card-body">
           <Heading className="product-card-title">{product.name}</Heading>
-          {volumes ? <p className="product-card-meta">{volumes}</p> : null}
+          <p className="product-card-meta">{product.category === "PARFUM" ? "Eau de parfum" : "Laiton doré"}{volumes ? ` · ${volumes}` : ""}</p>
           <p className="product-card-price">
             {soldOut ? <span className="sr-only">Épuisé — </span> : null}
             {hasRange ? "À partir de " : ""}{formatPrice(minPrice)}

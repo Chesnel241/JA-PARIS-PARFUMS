@@ -23,7 +23,7 @@ export function ArticleCard({ article, sizes = "(min-width: 900px) 33vw, 100vw",
   const date = formatDate(article.publishedAt);
   return (
     <article className={`article-card${featured ? " is-featured" : ""}`}>
-      <Link href={`/journal/${article.slug}`} className="article-card-link" data-cursor="Lire">
+      <Link href={`/journal/${article.slug}`} className="article-card-link">
         <div className="article-card-media">
           <Image src={article.coverImage} alt="" fill sizes={sizes} priority={priority} unoptimized={isApiMedia(article.coverImage)} className="article-card-img" />
         </div>
