@@ -137,7 +137,8 @@ export function SillageCanvas({ tone = "night", intensity = 1, className = "" }:
     const canvas = canvasRef.current;
     if (!canvas) return;
     const gl = canvas.getContext("webgl", { antialias: false, alpha: false, depth: false, stencil: false, powerPreference: "low-power", preserveDrawingBuffer: false });
-    if (!gl) return;
+    // Contexte absent ou perdu : le fond CSS du conteneur reste affiché.
+    if (!gl || gl.isContextLost()) return;
 
     const vertex = compile(gl, gl.VERTEX_SHADER, VERTEX);
     const fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT);
@@ -186,15 +187,17 @@ export function SillageCanvas({ tone = "night", intensity = 1, className = "" }:
       head = (head + 1) % TRAIL;
     };
 
+    // Les uniformes appartiennent au programme : on (ré)envoie toujours la
+    // résolution, même si le canvas a déjà la bonne taille (remontage).
     const resize = () => {
       const width = Math.max(1, Math.round(canvas.clientWidth * scale));
       const height = Math.max(1, Math.round(canvas.clientHeight * scale));
       if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
-        gl.viewport(0, 0, width, height);
-        gl.uniform2f(uRes, width, height);
       }
+      gl.viewport(0, 0, width, height);
+      gl.uniform2f(uRes, width, height);
     };
 
     const draw = (time: number) => {
@@ -210,12 +213,21 @@ export function SillageCanvas({ tone = "night", intensity = 1, className = "" }:
     });
     resizeObserver.observe(canvas);
 
+    // Libère les ressources GPU sans « perdre » le contexte : un remontage du
+    // composant (navigation, mode strict de React) réutilise le même canvas.
+    const release = () => {
+      gl.deleteBuffer(buffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+    };
+
     if (staticFrame) {
       draw(12);
       canvas.dataset.ready = "true";
       return () => {
         resizeObserver.disconnect();
-        gl.getExtension("WEBGL_lose_context")?.loseContext();
+        release();
       };
     }
 
@@ -299,7 +311,7 @@ export function SillageCanvas({ tone = "night", intensity = 1, className = "" }:
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onPointer);
       canvas.removeEventListener("webglcontextlost", onLost);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      release();
     };
   }, [tone, intensity]);
 

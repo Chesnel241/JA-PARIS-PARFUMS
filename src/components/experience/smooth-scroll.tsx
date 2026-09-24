@@ -16,6 +16,18 @@ export function SmoothScroll() {
   const pathname = usePathname();
   const lenisRef = useRef<Lenis | null>(null);
 
+  // Les polices web décalent la mise en page à leur arrivée : on recalcule
+  // alors les positions de tous les déclencheurs (épingles, parallaxes).
+  useEffect(() => {
+    let cancelled = false;
+    document.fonts?.ready.then(() => {
+      if (!cancelled) ScrollTrigger.refresh();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (prefersReducedMotion() || !hasFinePointer()) return;
 

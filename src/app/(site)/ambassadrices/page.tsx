@@ -75,7 +75,7 @@ export default async function AmbassadorsPage() {
 
       <section id="candidature" className={`candidature${hasAmbassadors ? "" : " is-featured"}`} aria-labelledby="candidature-title">
         <div className="candidature-media">
-          <Image src={visual} alt="" fill sizes="(min-width: 1024px) 42vw, 100vw" priority={!hasAmbassadors} unoptimized={isApiMedia(visual)} />
+          <Image src={visual} alt="" fill sizes="(min-width: 1024px) 42vw, 100vw" priority={!hasAmbassadors} unoptimized={isApiMedia(visual)} className="parallax-img" data-parallax="0.1" />
         </div>
         <Reveal className="candidature-content">
           <p className="eyebrow">Programme ambassadrices</p>

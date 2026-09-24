@@ -157,3 +157,7 @@ html[data-transition] [data-reveal-load] .w-in { animation-delay: calc(var(--i, 
 html[data-transition] [data-load-fade] { animation-delay: calc(var(--d, 0) * 1s + 800ms); }
 @keyframes load-fade { from { opacity: 0; transform: translate3d(0, 22px, 0); } }
 @media (prefers-reduced-motion: reduce) { .js [data-load-fade] { animation: none !important; } }
+
+/* Images en parallaxe (data-parallax) : légèrement agrandies pour ne jamais laisser de bord vide. */
+.parallax-img { scale: 1.18; object-fit: cover; }
+@media (prefers-reduced-motion: reduce) { .parallax-img { scale: 1; } }
