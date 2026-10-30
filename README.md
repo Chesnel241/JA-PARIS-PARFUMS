@@ -42,6 +42,16 @@ docker exec -it jae-paris-app npx prisma migrate deploy
 docker exec -it jae-paris-app npx tsx prisma/seed.ts
 ```
 
+### Paiement par carte (Stripe)
+
+1. Dashboard Stripe › Développeurs › Clés API : créez de préférence une **clé restreinte** (`rk_live_…`) avec les droits *Checkout Sessions* (écriture), *PaymentIntents* (lecture) et *Refunds* (écriture), et renseignez-la dans `STRIPE_SECRET_KEY` (Vercel › Settings › Environment Variables, environnement *Production*).
+2. Dashboard › Développeurs › Webhooks : ajoutez l'endpoint `https://jaeparis.com/api/stripe/webhook` avec les événements `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, puis copiez son secret de signature dans `STRIPE_WEBHOOK_SECRET`.
+3. Moyens de paiement : Dashboard › Paramètres › Moyens de paiement (carte bancaire, Apple Pay, Google Pay…). Le site ne fixe aucune liste.
+4. TVA (Stripe Tax, facultatif) : renseignez l'adresse du siège et vos immatriculations dans Dashboard › Tax, puis `STRIPE_AUTOMATIC_TAX=true`. Les prix restent TTC (TVA incluse, jamais ajoutée). Code taxe produit : celui par défaut du compte, ou `STRIPE_TAX_CODE` (valeur `txcd_…` issue de la liste officielle Stripe).
+5. Redéployez. Sans `STRIPE_SECRET_KEY`, le site garde le paiement Lydia.
+
+Les clés de **test** (`sk_test_…`) ne doivent servir qu'en local ou en préproduction : en production, les vraies cartes seraient refusées.
+
 ## Scripts disponibles
 
 | Script | Description |
@@ -64,7 +74,7 @@ docker exec -it jae-paris-app npx tsx prisma/seed.ts
 - **Styling** : Tailwind CSS v4 + PostCSS + CSS custom
 - **Base de données** : PostgreSQL 16 via Prisma ORM
 - **Authentification** : Auth.js (NextAuth v5) — JWT, bcrypt, rate limiting
-- **Paiement** : Lydia (lien externe) avec création de commande et décrémentation du stock
+- **Paiement** : carte bancaire via Stripe Checkout (webhook signé, stock réservé 35 min, remboursement automatique à l'annulation, Stripe Tax en option) ; repli sur le lien Lydia tant que Stripe n'est pas configuré
 - **Containerisation** : Dockerfile multi-stage + docker-compose.prod.yml
 
 ## Fonctionnalités

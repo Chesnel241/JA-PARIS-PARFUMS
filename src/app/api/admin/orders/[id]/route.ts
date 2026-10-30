@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ApiError, handleApi, json, parseId, parseJson, requireApiStaff } from "@/lib/api";
-import { cancelOrder, confirmOrderPayment, getAdminOrder, orderAmounts, orderReference, setOrderStatus } from "@/lib/order-service";
-import { prisma } from "@/lib/prisma";
+import { confirmOrderPayment, getAdminOrder, orderAmounts, orderProductSlugs, orderReference, setOrderStatus } from "@/lib/order-service";
 import { revalidateOrders } from "@/lib/revalidate";
+import { cancelOrderWithRefund } from "@/lib/stripe-checkout";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -35,16 +35,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const order =
       action.action === "confirm-payment" ? await confirmOrderPayment(id)
-      : action.action === "cancel" ? await cancelOrder(id)
+      // Commande payée par carte : remboursement Stripe automatique avant annulation.
+      : action.action === "cancel" ? await cancelOrderWithRefund(id)
       : await setOrderStatus(id, action.status);
 
     if (action.action === "cancel") {
       // Le stock restitué modifie la disponibilité affichée sur le site.
-      const products = await prisma.product.findMany({
-        where: { id: { in: order.items.map((item) => item.productId) } },
-        select: { slug: true },
-      });
-      revalidateOrders({ orderId: id, stockChanged: true, slugs: products.map((product) => product.slug) });
+      revalidateOrders({ orderId: id, stockChanged: true, slugs: await orderProductSlugs(order.items) });
     } else {
       revalidateOrders({ orderId: id });
     }

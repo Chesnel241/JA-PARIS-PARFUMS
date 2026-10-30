@@ -121,10 +121,25 @@ export async function setOrderStatus(id: string, status: OrderStatus) {
   });
 }
 
+async function restockAndCancel(tx: TransactionClient, order: Awaited<ReturnType<typeof lockOrder>>, paymentStatus: PaymentStatus) {
+  for (const item of order.items) {
+    await tx.productVariant.updateMany({
+      where: { productId: item.productId, volume: item.volume },
+      data: { stock: { increment: item.quantity } },
+    });
+  }
+  return tx.order.update({
+    where: { id: order.id },
+    data: { status: OrderStatus.CANCELLED, paymentStatus },
+    include: orderInclude,
+  });
+}
+
 // Annule une commande : restitue le stock (qui avait été décrémenté à la
 // commande) et passe le paiement en remboursé s'il avait été encaissé.
 // Idempotent et sûr en concurrence (ligne verrouillée) : ne restitue jamais
-// deux fois.
+// deux fois. Pour une commande payée par carte, le remboursement Stripe est
+// effectué AVANT (voir cancelOrderWithRefund dans src/lib/stripe-checkout.ts).
 export async function cancelOrder(id: string) {
   return prisma.$transaction(async (tx) => {
     const order = await lockOrder(tx, id);
@@ -134,21 +149,104 @@ export async function cancelOrder(id: string) {
     if (order.status === OrderStatus.DELIVERED) {
       throw new ApiError(409, "Une commande livrée ne peut plus être annulée.", { code: "ORDER_DELIVERED" });
     }
-    for (const item of order.items) {
-      await tx.productVariant.updateMany({
-        where: { productId: item.productId, volume: item.volume },
-        data: { stock: { increment: item.quantity } },
-      });
+    return restockAndCancel(tx, order, order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus);
+  });
+}
+
+// Slugs des produits d'une commande (invalidation des fiches après un
+// changement de stock).
+export async function orderProductSlugs(items: { productId: string }[]) {
+  const products = await prisma.product.findMany({
+    where: { id: { in: [...new Set(items.map((item) => item.productId))] } },
+    select: { slug: true },
+  });
+  return products.map((product) => product.slug);
+}
+
+// ---------------------------------------------------------------------------
+// Paiement par carte (Stripe Checkout) — appelé uniquement sur preuve Stripe
+// (webhook signé ou session relue côté serveur).
+// ---------------------------------------------------------------------------
+
+export function attachCheckoutSession(id: string, sessionId: string) {
+  return prisma.order.update({ where: { id }, data: { stripeSessionId: sessionId } });
+}
+
+export function findOrderByCheckoutSession(sessionId: string) {
+  return prisma.order.findUnique({ where: { stripeSessionId: sessionId }, include: { items: { orderBy: { id: "asc" } } } });
+}
+
+export type CardPaymentOutcome = "paid" | "already-paid" | "cancelled";
+
+// Enregistre l'encaissement. Idempotent. Une commande annulée entre-temps
+// n'est jamais « ressuscitée » (son stock a pu être revendu) : l'appelant
+// rembourse alors le client.
+export async function recordCardPayment(id: string, payment: { sessionId: string; paymentIntentId: string | null }) {
+  return prisma.$transaction(async (tx) => {
+    const order = await lockOrder(tx, id);
+    // Session absente : son enregistrement a échoué juste après sa création
+    // (la session, authentifiée par Stripe, porte l'identifiant de commande).
+    if (order.stripeSessionId && order.stripeSessionId !== payment.sessionId) {
+      throw new ApiError(409, "Session de paiement inattendue pour cette commande.", { code: "SESSION_MISMATCH" });
     }
-    return tx.order.update({
+    const intent = { stripeSessionId: payment.sessionId, ...(payment.paymentIntentId ? { stripePaymentIntentId: payment.paymentIntentId } : {}) };
+    if (order.status === OrderStatus.CANCELLED) {
+      const updated = await tx.order.update({ where: { id }, data: intent, include: orderInclude });
+      return { order: updated, outcome: "cancelled" as CardPaymentOutcome };
+    }
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      const current = await tx.order.update({ where: { id }, data: intent, include: orderInclude });
+      return { order: current, outcome: "already-paid" as CardPaymentOutcome };
+    }
+    const updated = await tx.order.update({
       where: { id },
       data: {
-        status: OrderStatus.CANCELLED,
-        paymentStatus: order.paymentStatus === PaymentStatus.PAID ? PaymentStatus.REFUNDED : order.paymentStatus,
+        ...intent,
+        paymentStatus: PaymentStatus.PAID,
+        status: order.status === OrderStatus.PENDING ? OrderStatus.CONFIRMED : order.status,
       },
       include: orderInclude,
     });
+    return { order: updated, outcome: "paid" as CardPaymentOutcome };
   });
+}
+
+// Libère une commande par carte jamais payée (session expirée, paiement
+// abandonné ou refusé) : stock restitué, commande annulée. Sans effet sur une
+// commande payée ou déjà annulée. Renvoie null si rien n'a changé.
+export async function releaseUnpaidOrder(id: string, options: { failed?: boolean } = {}) {
+  return prisma.$transaction(async (tx) => {
+    const order = await lockOrder(tx, id);
+    if (order.status === OrderStatus.CANCELLED || order.paymentStatus !== PaymentStatus.UNPAID) return null;
+    return restockAndCancel(tx, order, options.failed ? PaymentStatus.FAILED : PaymentStatus.UNPAID);
+  });
+}
+
+export function markOrderRefunded(id: string) {
+  return prisma.order.update({ where: { id }, data: { paymentStatus: PaymentStatus.REFUNDED }, include: orderInclude });
+}
+
+// Commandes par carte restées en attente au-delà de la durée de la session
+// (webhook manqué) : resynchronisées par sweepStaleCheckouts.
+// Chaque commande est revue au plus toutes les 10 min (rotation par
+// updatedAt) : un virement en cours de traitement ne bloque pas les autres.
+export function listStaleCardOrders(olderThan: Date, take: number) {
+  return prisma.order.findMany({
+    where: {
+      stripeSessionId: { not: null },
+      paymentStatus: PaymentStatus.UNPAID,
+      status: OrderStatus.PENDING,
+      createdAt: { lt: olderThan },
+      updatedAt: { lt: new Date(Date.now() - 10 * 60_000) },
+    },
+    select: { id: true, stripeSessionId: true },
+    orderBy: { updatedAt: "asc" },
+    take,
+  });
+}
+
+export function touchOrder(id: string) {
+  return prisma.order.update({ where: { id }, data: { updatedAt: new Date() }, select: { id: true } });
 }
 
 // ---------------------------------------------------------------------------

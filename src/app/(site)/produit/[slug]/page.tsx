@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCategory } from "@prisma/client";
 import { getPublicProduct, getPublicProducts } from "@/lib/catalog";
+import { paymentCopy } from "@/lib/payment";
+import { getPaymentProvider } from "@/lib/stripe";
 import type { Product } from "@/lib/data";
 import { paletteOf } from "@/lib/heures";
 import { hourLabel, sortByDay } from "@/lib/maison";
@@ -143,7 +145,7 @@ export default async function ProductPage({ params }: PageProps) {
             <li>Livraison offerte dès 50&nbsp;€, sinon 5,90&nbsp;€</li>
             <li>Expédition sous 2 à 3 jours</li>
             <li>{isAccessory ? "Retours sous 14 jours pour tout article intact" : "Retours sous 14 jours si le flacon est intact et non ouvert"}</li>
-            <li>Paiement sécurisé via Lydia</li>
+            <li>{paymentCopy(getPaymentProvider()).short}</li>
             {product.family ? <li>{product.family}</li> : null}
           </ul>
           {isAccessory ? (

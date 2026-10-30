@@ -32,6 +32,7 @@ Réponse : **429** `{ error: "… Merci de réessayer dans N minutes.", retryAft
 | `POST /api/ambassador-applications` | 5 / h / IP | après validation, hors pot de miel |
 | `POST /api/newsletter` | 10 / h / IP | après validation, hors pot de miel |
 | `POST /api/stock-alerts` | 10 / h / IP | après validation, hors pot de miel |
+| `GET /api/checkout/status`, `POST /api/checkout/cancel` | 60 / 10 min / IP | après validation de l'identifiant de session |
 | Connexion admin | 30 tentatives / 15 min / IP **et** 5 échecs / 15 min par couple e-mail+IP (blocage 15 min) | chaque tentative |
 
 ---
@@ -61,7 +62,8 @@ Corps :
 - 1 à 30 lignes ; lignes identiques (slug + contenance) **fusionnées** ; quantité entière 1–10 par article (après fusion).
 - Code postal : 5 chiffres si pays = France/FR, sinon 2–10 caractères alphanumériques. Téléphone : 6–15 chiffres. `country` vaut `France` par défaut.
 - Livraison : 5,90 € si sous-total < 50 €, offerte à partir de 50 € (`src/lib/shipping.ts`).
-- Stock décrémenté de façon atomique à la commande ; la commande est `PENDING` / `UNPAID` jusqu'à confirmation manuelle.
+- Stock décrémenté de façon atomique à la commande ; la commande est `PENDING` / `UNPAID` jusqu'à confirmation du paiement (automatique par Stripe, manuelle pour Lydia).
+- **Moyen de paiement** : carte bancaire via **Stripe Checkout** dès que `STRIPE_SECRET_KEY` est définie, sinon repli sur le lien **Lydia** (voir « Paiement par carte (Stripe) » ci-dessous).
 
 Réponses :
 - **201**
@@ -76,16 +78,49 @@ Réponses :
     "createdAt": "…", "updatedAt": "…"
   },
   "payment": {
-    "method": "lydia", "url": "https://pay.lydia.me/l?t=jessicaa9zq1",
-    "reference": "JAE-7K3P9Q", "amount": 3090,
-    "message": "Indiquez la référence JAE-7K3P9Q dans le message de votre paiement Lydia."
+    "method": "stripe", "url": "https://checkout.stripe.com/c/pay/cs_live_…",
+    "sessionId": "cs_live_…", "reference": "JAE-7K3P9Q", "amount": 3090,
+    "expiresAt": "2026-10-30T12:35:00.000Z"
   }
 }
 ```
-  La référence (`JAE-` + 6 caractères sans 0/O/1/I/L) est unique : c'est elle que le client recopie dans son message Lydia. Constante `LYDIA_PAYMENT_URL` dans `src/lib/payment.ts`.
+  Le client est redirigé vers `payment.url` (page de paiement Stripe). Sans Stripe, `payment` vaut
+  `{ "method": "lydia", "url": "https://pay.lydia.me/l?t=…", "reference", "amount", "message" }` (constante `LYDIA_PAYMENT_URL` dans `src/lib/payment.ts`).
+  La référence (`JAE-` + 6 caractères sans 0/O/1/I/L) est unique : affichée sur la page Stripe, ou recopiée dans le message Lydia.
 - **422** validation — `error` = premier message lisible (ex. `Le code postal doit comporter 5 chiffres.`), `fields` détaillé.
 - **409** `code: "UNAVAILABLE"` (produit/contenance inexistant ou inactif) ou `code: "OUT_OF_STOCK"` avec `item: { slug, volume, available }` (ex. `Stock insuffisant pour Or Solaire · 50 ml : 1 disponible.`).
 - **429** limiteur.
+- **502** `code: "PAYMENT_UNAVAILABLE"` : Stripe injoignable ; la commande est annulée aussitôt et le stock restitué (le panier du client est conservé).
+
+### Paiement par carte (Stripe)
+
+Parcours : `POST /api/orders` → session **Stripe Checkout** (page hébergée, moyens de paiement dynamiques réglés dans le Dashboard, prix TTC `tax_behavior: inclusive`) → retour sur `/panier?etape=confirmation&session_id={CHECKOUT_SESSION_ID}` (paiement) ou `/panier?etape=livraison&paiement=annule` (abandon). Code : `src/lib/stripe.ts`, `src/lib/stripe-checkout.ts`.
+
+- Le stock est réservé **35 minutes** (`expires_at` de la session) ; passé ce délai la session expire et la commande est annulée, stock restitué.
+- La commande n'est marquée payée que sur **preuve Stripe** : webhook signé, ou session relue côté serveur au retour du client. Toutes les transitions sont idempotentes (verrou `FOR UPDATE`).
+- Paiement reçu pour une commande annulée entre-temps : remboursement intégral automatique.
+- Filet de sécurité : après chaque commande, les paiements restés en attente au-delà de la session sont resynchronisés auprès de Stripe (webhook manqué).
+
+#### `POST /api/stripe/webhook`
+Endpoint à déclarer dans Dashboard › Développeurs › Webhooks : `https://jaeparis.com/api/stripe/webhook`, événements
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`.
+Signature vérifiée sur le corps brut (`STRIPE_WEBHOOK_SECRET`).
+- 200 `{ received: true, result }` · 400 signature absente/invalide · 413 · 500 traitement en échec (Stripe renverra l'événement) · 503 Stripe non configuré.
+
+| Événement | Effet |
+|---|---|
+| `checkout.session.completed` (`payment_status: paid`) / `async_payment_succeeded` | `UNPAID → PAID`, `PENDING → CONFIRMED`, PaymentIntent enregistré |
+| `checkout.session.completed` (`payment_status: unpaid`, paiement différé) | aucun (stock toujours réservé) |
+| `checkout.session.async_payment_failed` | `CANCELLED` / `FAILED`, stock restitué |
+| `checkout.session.expired` | `CANCELLED`, stock restitué |
+
+#### `GET /api/checkout/status?session_id=cs_…`
+État du paiement au retour de Stripe (relit la session si la commande est encore en attente). L'identifiant de session sert de clé d'accès.
+- 200 `{ state: "paid"|"processing"|"open"|"cancelled", paymentUrl, order: { reference, email, firstName, subtotal, shippingAmount, totalAmount, createdAt, items } }` · 404 · 422 · 429
+
+#### `POST /api/checkout/cancel`
+Corps : `{ sessionId }`. Ferme la session Stripe encore ouverte puis annule la commande (stock restitué) ; si le paiement a abouti entre-temps, il est enregistré à la place. Origine étrangère → 403.
+- 200 `{ state }` · 403 · 404 · 422 · 429 · 502 (Stripe injoignable) · 503 (Stripe non configuré)
 
 ### `POST /api/ambassador-applications` — candidature « Devenir ambassadrice »
 Corps : `{ firstName (1–60), lastName (1–60), email, phone?, instagram?, city?, message (20–2000), website? }` (`website` = pot de miel : s'il est rempli, 201 sans enregistrement).
@@ -192,7 +227,8 @@ Revalide `/ambassadrices` ou `/boutiques`, `/` et la page admin correspondante.
 Transitions (la ligne est verrouillée `FOR UPDATE` : doubles clics sans effet) :
 - `confirm-payment` : `UNPAID → PAID`, `PENDING → CONFIRMED`. Idempotent. Commande annulée → 409 `ORDER_NOT_CONFIRMABLE`.
 - `set-status` : exige `PAID` (sinon 409 `PAYMENT_REQUIRED`) ; interdit sur commande annulée (409 `ORDER_CANCELLED`) ; retour arrière permis entre statuts de préparation.
-- `cancel` : restitue le stock (une seule fois, idempotent), `PAID → REFUNDED`. Commande livrée → 409 `ORDER_DELIVERED`.
+- `cancel` : restitue le stock (une seule fois, idempotent), `PAID → REFUNDED`. Commande livrée → 409 `ORDER_DELIVERED`. Commande par carte : la session Stripe encore ouverte est d'abord fermée, et un paiement encaissé est **remboursé automatiquement** via Stripe avant l'annulation (échec → 502 `REFUND_FAILED`, commande inchangée).
+- `confirm-payment` est réservé aux paiements Lydia : un paiement par carte n'est confirmé que par Stripe (l'admin n'affiche pas l'action).
 
 ### Médias
 | Méthode & route | Corps | Réponses |

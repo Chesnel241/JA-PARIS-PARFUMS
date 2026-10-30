@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CartContextValue } from "@/lib/cart";
 import { formatPrice } from "@/lib/data";
+import { paymentCopy } from "@/lib/payment";
 import { deName, formatMinutes } from "@/lib/heures";
 import { CartLine } from "@/components/commerce/cart-line";
 import { ShippingProgress } from "@/components/commerce/shipping-progress";
@@ -84,6 +85,7 @@ function EmptyDrawer({ onClose }: { onClose: () => void }) {
 function DrawerContent({ cart }: { cart: CartContextValue }) {
   const { items, count, subtotal, shipping, grandTotal, closeDrawer, updateQuantity, removeItem } = cart;
   const reduceMotion = useReducedMotion();
+  const { paymentProvider } = useMaison();
 
   return (
     <>
@@ -130,7 +132,7 @@ function DrawerContent({ cart }: { cart: CartContextValue }) {
               <div className="cm-totals__grand"><dt>Total</dt><dd>{formatPrice(grandTotal)}</dd></div>
             </dl>
             <Link href="/panier" className="btn" onClick={closeDrawer}>Passer commande<span className="ico"><ArrowIcon /></span></Link>
-            <p className="small">Paiement sécurisé via Lydia, après validation de la commande.</p>
+            <p className="small">{paymentCopy(paymentProvider).drawer}</p>
           </div>
         </>
       )}

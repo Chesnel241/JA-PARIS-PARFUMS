@@ -56,6 +56,21 @@ export function checkEnv(env: NodeJS.ProcessEnv = process.env): EnvIssue[] {
     issues.push({ name: "AUTH_URL", fatal: false, message: "AUTH_URL doit être une URL absolue (https://…) ou être supprimée (Vercel la déduit automatiquement)." });
   }
 
+  // Paiement par carte (facultatif : sans clé, le site garde le paiement Lydia).
+  const stripeKey = env.STRIPE_SECRET_KEY?.trim();
+  if (stripeKey) {
+    if (!/^(sk|rk)_(test|live)_[A-Za-z0-9]{10,}$/.test(stripeKey)) {
+      issues.push({ name: "STRIPE_SECRET_KEY", fatal: false, message: "STRIPE_SECRET_KEY est invalide (sk_live_…, rk_live_… ou équivalent test) : paiement par carte désactivé, repli sur Lydia." });
+    } else {
+      if (!env.STRIPE_WEBHOOK_SECRET?.trim().startsWith("whsec_")) {
+        issues.push({ name: "STRIPE_WEBHOOK_SECRET", fatal: false, message: "STRIPE_WEBHOOK_SECRET est absente : créez le webhook https://<domaine>/api/stripe/webhook dans le Dashboard Stripe. Sans lui, les paiements ne sont confirmés qu'au retour du client et par la resynchronisation périodique." });
+      }
+      if (/^(sk|rk)_test_/.test(stripeKey) && env.VERCEL_ENV === "production") {
+        issues.push({ name: "STRIPE_SECRET_KEY", fatal: false, message: "STRIPE_SECRET_KEY est une clé de TEST en production : les vraies cartes seront refusées. Utilisez une clé live." });
+      }
+    }
+  }
+
   return issues;
 }
 

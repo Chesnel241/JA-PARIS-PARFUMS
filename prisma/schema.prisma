@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native"]
 }
 
@@ -119,25 +119,28 @@ model ProductVariant {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  // Référence lisible communiquée au client (ex. « JAE-7K3P9Q ») : c'est elle
-  // qu'il indique dans son message de paiement Lydia.
-  reference       String?       @unique
-  userId          String?
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email           String
+  id                    String        @id @default(cuid())
+  // Référence lisible communiquée au client (ex. « JAE-7K3P9Q ») : affichée
+  // sur la page de paiement Stripe, ou à indiquer dans un paiement Lydia.
+  reference             String?       @unique
+  userId                String?
+  user                  User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email                 String
   // Montants en centimes : sous-total articles + livraison = total.
-  subtotalAmount  Int           @default(0)
-  shippingAmount  Int           @default(0)
-  totalAmount     Int
-  currency        String        @default("eur")
-  status          OrderStatus   @default(PENDING)
-  stripeSessionId String?       @unique
-  paymentStatus   PaymentStatus @default(UNPAID)
-  deliveryAddress Json
-  items           OrderItem[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  subtotalAmount        Int           @default(0)
+  shippingAmount        Int           @default(0)
+  totalAmount           Int
+  currency              String        @default("eur")
+  status                OrderStatus   @default(PENDING)
+  // Paiement par carte (Stripe Checkout) : session créée à la commande, puis
+  // PaymentIntent enregistré à l'encaissement. Absents pour un paiement Lydia.
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String?       @unique
+  paymentStatus         PaymentStatus @default(UNPAID)
+  deliveryAddress       Json
+  items                 OrderItem[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   @@index([status, createdAt])
   @@index([paymentStatus, createdAt])

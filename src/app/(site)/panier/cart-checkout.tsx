@@ -1,17 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Info, ShieldCheck, Truck, X } from "lucide-react";
 import { useCart, type CartAdjustment, type CatalogSnapshot } from "@/lib/cart";
 import { formatPrice } from "@/lib/data";
+import { paymentCopy, type PaymentProvider } from "@/lib/payment";
 import { CartLine } from "@/components/commerce/cart-line";
+import { CardReturn, type CardReturnView } from "./card-return";
 import { CheckoutForm } from "./checkout-form";
 import { OrderConfirmation } from "./order-confirmation";
 import { OrderSummary } from "./order-summary";
-import { clearDraft, loadLastOrder, saveLastOrder, type ConfirmedOrder } from "./checkout-utils";
+import {
+  cancelCheckout,
+  clearDraft,
+  clearPendingCheckout,
+  isCheckoutSessionId,
+  loadLastOrder,
+  loadPendingCheckout,
+  saveLastOrder,
+  toCheckoutStatus,
+  type ConfirmedOrder,
+} from "./checkout-utils";
 
 type Step = "cart" | "checkout" | "confirmation";
 
@@ -46,7 +58,12 @@ function setStepUrl(step: Step, mode: "push" | "replace" = "push") {
   window.scrollTo({ top: 0 });
 }
 
-export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
+type CardReturnState = { sessionId: string; view: CardReturnView | "done" };
+
+const ABANDONED_NOTICE = (reference: string) =>
+  `Paiement non finalisé : la commande ${reference} a été annulée et ses articles remis en stock. Votre panier est conservé.`;
+
+export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSnapshot[]; paymentProvider: PaymentProvider }) {
   const cart = useCart();
   const { items, hydrated, subtotal, shipping, grandTotal, reconcile, updateQuantity, removeItem, clearCart } = cart;
   const router = useRouter();
@@ -56,10 +73,29 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [notices, setNotices] = useState<string[]>([]);
   const noticesRef = useRef<HTMLDivElement>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const stepParam = searchParams.get("etape");
+  // Retour de la page Stripe après paiement : /panier?etape=confirmation&session_id=cs_…
+  const sessionParam = searchParams.get("session_id");
+  const returnSessionId = stepParam === "confirmation" && isCheckoutSessionId(sessionParam) ? sessionParam : null;
+  const [cardReturn, setCardReturn] = useState<CardReturnState | null>(null);
+  const [statusAttempt, setStatusAttempt] = useState(0);
+  const [cardBusy, setCardBusy] = useState(false);
+  // Paiement par carte abandonné à libérer avant de réconcilier le panier (le
+  // catalogue chargé compte encore ses articles comme réservés).
+  const [releasing, setReleasing] = useState(() => typeof window !== "undefined" && !returnSessionId && loadPendingCheckout() !== null);
+  const [refreshing, startRefresh] = useTransition();
+
+  const returnView: CardReturnView | null = returnSessionId
+    ? cardReturn?.sessionId === returnSessionId
+      ? cardReturn.view === "done" ? null : cardReturn.view
+      : { kind: "loading" }
+    : null;
+
   const step: Step =
-    stepParam === "confirmation" && lastOrder
+    stepParam === "confirmation" && lastOrder && !returnView
       ? "confirmation"
       : stepParam === "livraison" && items.length > 0
         ? "checkout"
@@ -70,14 +106,105 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
     setSessionLoaded(true);
   }, []);
 
+  const addNotice = useCallback((notice: string) => setNotices((current) => [...new Set([...current, notice])]), []);
+
+  // Le client a quitté la page Stripe sans payer (bouton « Retour » ou retour
+  // arrière) : sa commande est annulée et le stock libéré aussitôt.
+  const cancelParamHandled = useRef(false);
+  useEffect(() => {
+    if (returnSessionId) return;
+    const pending = loadPendingCheckout();
+    const cancelParam = searchParams.get("paiement") === "annule" && !cancelParamHandled.current;
+    cancelParamHandled.current ||= searchParams.get("paiement") === "annule";
+    if (!pending) {
+      setReleasing(false);
+      if (cancelParam) addNotice("Paiement annulé : votre panier est conservé.");
+      return;
+    }
+    let active = true;
+    setReleasing(true);
+    void cancelCheckout(pending.sessionId).then((state) => {
+      if (!active) return;
+      if (state === "paid" || state === "processing") {
+        window.location.replace(`/panier?etape=confirmation&session_id=${encodeURIComponent(pending.sessionId)}`);
+        return;
+      }
+      clearPendingCheckout();
+      if (state === "cancelled") addNotice(ABANDONED_NOTICE(pending.reference));
+      setReleasing(false);
+      startRefresh(() => router.refresh());
+    });
+    return () => {
+      active = false;
+    };
+  }, [returnSessionId, searchParams, router, addNotice]);
+
+  // Vérification du paiement au retour de Stripe (le webhook a souvent déjà
+  // confirmé la commande ; sinon le serveur relit la session).
+  useEffect(() => {
+    if (!hydrated || !sessionLoaded || !returnSessionId) return;
+    let active = true;
+    const sessionId = returnSessionId;
+    setCardReturn({ sessionId, view: { kind: "loading" } });
+    void (async () => {
+      let status = null;
+      try {
+        const response = await fetch(`/api/checkout/status?session_id=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
+        const data: unknown = await response.json().catch(() => null);
+        status = response.ok ? toCheckoutStatus(data, itemsRef.current) : null;
+      } catch {
+        status = null;
+      }
+      if (!active) return;
+      if (!status) {
+        setCardReturn({ sessionId, view: { kind: "error" } });
+      } else if (status.state === "paid" || status.state === "processing") {
+        saveLastOrder(status.order);
+        setLastOrder(status.order);
+        clearPendingCheckout();
+        clearDraft();
+        clearCart();
+        setNotices([]);
+        setCardReturn({ sessionId, view: "done" });
+      } else if (status.state === "open") {
+        setCardReturn({ sessionId, view: { kind: "open", reference: status.order.reference, total: status.order.total, paymentUrl: status.paymentUrl } });
+      } else {
+        clearPendingCheckout();
+        addNotice(ABANDONED_NOTICE(status.order.reference));
+        setCardReturn({ sessionId, view: "done" });
+        setStepUrl("cart", "replace");
+        startRefresh(() => router.refresh());
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [hydrated, sessionLoaded, returnSessionId, statusAttempt, clearCart, router, addNotice]);
+
+  const backToCartFromPayment = useCallback(async () => {
+    if (!returnSessionId) return;
+    setCardBusy(true);
+    const state = await cancelCheckout(returnSessionId);
+    setCardBusy(false);
+    if (state === "paid" || state === "processing") {
+      setStatusAttempt((attempt) => attempt + 1);
+      return;
+    }
+    clearPendingCheckout();
+    const view = cardReturn?.view;
+    if (state === "cancelled" && view && view !== "done" && view.kind === "open") addNotice(ABANDONED_NOTICE(view.reference));
+    setStepUrl("cart", "replace");
+    startRefresh(() => router.refresh());
+  }, [returnSessionId, cardReturn, router, addNotice]);
+
   // Réconciliation avec le catalogue serveur (prix, stock, disponibilité).
   const lineSignature = items.map((item) => `${item.slug}|${item.volume}`).join(",");
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || releasing || refreshing || returnSessionId) return;
     const adjustments = reconcile(catalog);
     if (adjustments.length === 0) return;
     setNotices((current) => [...new Set([...current, ...adjustments.map(describeAdjustment)])]);
-  }, [hydrated, catalog, lineSignature, reconcile]);
+  }, [hydrated, catalog, lineSignature, reconcile, releasing, refreshing, returnSessionId]);
 
   const goTo = useCallback((next: Step) => setStepUrl(next), []);
 
@@ -112,6 +239,15 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
           </div>
         </div>
         <p className="sr-only" role="status">Chargement du panier…</p>
+      </div>
+    );
+  }
+
+  if (returnView) {
+    return (
+      <div className="page-shell cm-cart-page">
+        <Stepper current="confirmation" />
+        <CardReturn view={returnView} busy={cardBusy} onRetry={() => setStatusAttempt((attempt) => attempt + 1)} onBackToCart={backToCartFromPayment} />
       </div>
     );
   }
@@ -156,11 +292,17 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
           </div>
           {lastOrder ? (
             <div className="cm-empty__pending">
-              <p>
-                Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} en attente de paiement.
-              </p>
+              {lastOrder.method === "card" ? (
+                <p>
+                  Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} {lastOrder.paymentState === "paid" ? "réglée par carte." : "en cours de validation."}
+                </p>
+              ) : (
+                <p>
+                  Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} en attente de paiement.
+                </p>
+              )}
               <button type="button" className="cm-text-button" onClick={() => goTo("confirmation")}>
-                Voir les instructions de paiement
+                {lastOrder.method === "card" ? "Voir le récapitulatif" : "Voir les instructions de paiement"}
               </button>
             </div>
           ) : null}
@@ -196,7 +338,7 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
                   Passer commande <ArrowRight aria-hidden="true" size={16} />
                 </button>
                 <ul className="cm-summary__assurances">
-                  <li><ShieldCheck aria-hidden="true" /> Paiement sécurisé via Lydia</li>
+                  <li><ShieldCheck aria-hidden="true" /> {paymentCopy(paymentProvider).short}</li>
                   <li><Truck aria-hidden="true" /> Expédition sous 2 à 3 jours</li>
                 </ul>
               </OrderSummary>
@@ -216,7 +358,7 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
           </header>
           <div className="cm-checkout cm-checkout--form">
             <div className="cm-checkout__form">
-              <CheckoutForm items={items} total={grandTotal} onSuccess={handleSuccess} onStockConflict={handleStockConflict} />
+              <CheckoutForm items={items} total={grandTotal} paymentProvider={paymentProvider} onSuccess={handleSuccess} onStockConflict={handleStockConflict} />
             </div>
             <aside className="cm-checkout__aside">
               <OrderSummary showLines lines={summaryLines} subtotal={subtotal} shipping={shipping} total={grandTotal} />

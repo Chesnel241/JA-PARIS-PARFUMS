@@ -22,7 +22,8 @@ export default async function AdminDashboardPage() {
   const [revenue, revenue30, awaitingPayment, toPrepare, shipped, newApplications, subscribers, subscribers30, lowStock, recentOrders, activeProducts] = await Promise.all([
     prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.PAID }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.PAID, createdAt: { gte: since30 } }, _sum: { totalAmount: true } }),
-    prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.UNPAID, status: { not: OrderStatus.CANCELLED } }, _sum: { totalAmount: true }, _count: true }),
+    // Seuls les paiements Lydia se vérifient à la main (la carte se confirme seule).
+    prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.UNPAID, status: { not: OrderStatus.CANCELLED }, stripeSessionId: null }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.count({ where: { paymentStatus: PaymentStatus.PAID, status: { in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING] } } }),
     prisma.order.count({ where: { status: OrderStatus.SHIPPED } }),
     countNewApplications(),

@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, CircleAlert, LoaderCircle, Lock } from "lucide-react";
+import { ArrowRight, CircleAlert, CreditCard, LoaderCircle, Lock } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import type { CartItem } from "@/lib/cart";
+import type { PaymentProvider } from "@/lib/payment";
 import {
   COUNTRIES,
   EMPTY_FIELDS,
   FIELD_ORDER,
   buildOrderPayload,
+  cancelCheckout,
+  clearPendingCheckout,
   loadDraft,
+  loadPendingCheckout,
   parseApiFieldErrors,
   saveDraft,
+  savePendingCheckout,
   toConfirmedOrder,
   validateAll,
   validateField,
@@ -56,23 +61,47 @@ function formatWait(seconds: number) {
   return `${minutes} min`;
 }
 
+// URL de paiement renvoyée par notre API (Stripe Checkout) : https uniquement.
+function stripeRedirectUrl(data: unknown): { url: string; sessionId: string; expiresAt: string; reference: string; amount: number } | null {
+  const payment = data && typeof data === "object" ? (data as { payment?: unknown }).payment : null;
+  if (!payment || typeof payment !== "object") return null;
+  const value = payment as Record<string, unknown>;
+  if (value.method !== "stripe" || typeof value.url !== "string" || typeof value.sessionId !== "string") return null;
+  try {
+    if (new URL(value.url).protocol !== "https:") return null;
+  } catch {
+    return null;
+  }
+  return {
+    url: value.url,
+    sessionId: value.sessionId,
+    expiresAt: typeof value.expiresAt === "string" ? value.expiresAt : new Date(Date.now() + 30 * 60_000).toISOString(),
+    reference: typeof value.reference === "string" ? value.reference : "",
+    amount: typeof value.amount === "number" ? value.amount : 0,
+  };
+}
+
 export function CheckoutForm({
   items,
   total,
+  paymentProvider,
   onSuccess,
   onStockConflict,
 }: {
   items: CartItem[];
   total: number;
+  paymentProvider: PaymentProvider;
   onSuccess: (order: ConfirmedOrder) => void;
   onStockConflict: () => void;
 }) {
+  const card = paymentProvider === "stripe";
   // Monté uniquement côté client (après chargement du panier) : lecture directe du brouillon.
   const [fields, setFields] = useState<CheckoutFields>(() => loadDraft() ?? EMPTY_FIELDS);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [retryUntil, setRetryUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const submittingRef = useRef(false);
@@ -84,6 +113,19 @@ export function CheckoutForm({
   useEffect(() => {
     saveDraft(fields);
   }, [fields]);
+
+  // Retour arrière depuis la page Stripe (cache de navigation) : formulaire
+  // de nouveau utilisable.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      submittingRef.current = false;
+      setPending(false);
+      setRedirecting(false);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   useEffect(() => {
     if (retryUntil <= Date.now()) return;
@@ -143,9 +185,23 @@ export function CheckoutForm({
     setPending(true);
     setFormError("");
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    let leaving = false;
 
     try {
+      // Paiement précédent laissé ouvert (retour arrière depuis Stripe) : on le
+      // ferme pour libérer son stock avant d'enregistrer la nouvelle commande.
+      const previous = loadPendingCheckout();
+      if (previous) {
+        const state = await cancelCheckout(previous.sessionId);
+        clearPendingCheckout();
+        if (state === "paid" || state === "processing") {
+          leaving = true;
+          window.location.assign(`/panier?etape=confirmation&session_id=${encodeURIComponent(previous.sessionId)}`);
+          return;
+        }
+      }
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -163,6 +219,15 @@ export function CheckoutForm({
         : "";
 
       if (response.ok) {
+        const redirect = stripeRedirectUrl(data);
+        if (redirect) {
+          // Le panier est conservé jusqu'à la confirmation du paiement.
+          savePendingCheckout({ sessionId: redirect.sessionId, url: redirect.url, reference: redirect.reference, total: redirect.amount || total, expiresAt: redirect.expiresAt });
+          leaving = true;
+          setRedirecting(true);
+          window.location.assign(redirect.url);
+          return;
+        }
         onSuccess(toConfirmedOrder(data, { fields, items }));
         return;
       }
@@ -182,6 +247,8 @@ export function CheckoutForm({
         setNow(Date.now());
         setRetryUntil(Date.now() + wait * 1000);
         showFormError(`Trop de tentatives en peu de temps. Réessayez dans ${formatWait(wait)}.`);
+      } else if ((response.status === 502 || response.status === 503) && apiMessage) {
+        showFormError(apiMessage);
       } else {
         showFormError("Une erreur est survenue de notre côté. Votre panier est conservé : réessayez dans un instant.");
       }
@@ -189,8 +256,11 @@ export function CheckoutForm({
       showFormError("Connexion impossible. Vérifiez votre réseau puis réessayez : votre panier est conservé.");
     } finally {
       window.clearTimeout(timeout);
-      submittingRef.current = false;
-      setPending(false);
+      // Redirection en cours : le bouton reste désactivé jusqu'au départ.
+      if (!leaving) {
+        submittingRef.current = false;
+        setPending(false);
+      }
     }
   }
 
@@ -278,11 +348,18 @@ export function CheckoutForm({
       </fieldset>
 
       <div className="cm-form__payment">
-        <Lock aria-hidden="true" />
-        <p>
-          <strong>Paiement via Lydia</strong>
-          Après validation, vous recevez une référence de commande à indiquer lors du paiement Lydia. Votre commande est réservée dès maintenant.
-        </p>
+        {card ? <CreditCard aria-hidden="true" /> : <Lock aria-hidden="true" />}
+        {card ? (
+          <p>
+            <strong>Paiement par carte bancaire</strong>
+            Vous réglez ensuite sur la page de paiement sécurisée de Stripe (3-D Secure). Vos articles vous sont réservés pendant le paiement.
+          </p>
+        ) : (
+          <p>
+            <strong>Paiement via Lydia</strong>
+            Après validation, vous recevez une référence de commande à indiquer lors du paiement Lydia. Votre commande est réservée dès maintenant.
+          </p>
+        )}
       </div>
 
       <div ref={alertRef} className="cm-form__alert-slot" aria-live="assertive">
@@ -295,16 +372,22 @@ export function CheckoutForm({
       </div>
 
       <button type="submit" className="primary-button cm-block-button cm-submit" disabled={pending || waitSeconds > 0} aria-busy={pending}>
-        {pending ? (
+        {redirecting ? (
+          <><LoaderCircle className="spin" aria-hidden="true" size={18} /> Ouverture du paiement sécurisé…</>
+        ) : pending ? (
           <><LoaderCircle className="spin" aria-hidden="true" size={18} /> Validation en cours…</>
         ) : waitSeconds > 0 ? (
           <>Réessayer dans {formatWait(waitSeconds)}</>
+        ) : card ? (
+          <><Lock aria-hidden="true" size={16} /> Payer par carte · {formatPrice(total)} <ArrowRight aria-hidden="true" size={16} /></>
         ) : (
           <>Valider la commande · {formatPrice(total)} <ArrowRight aria-hidden="true" size={16} /></>
         )}
       </button>
       <p className="cm-form__legal" id="cm-form-legal">
-        En validant, vous confirmez votre commande. Le montant final est recalculé par nos soins au prix en vigueur.
+        {card
+          ? "En continuant, vous confirmez votre commande et acceptez nos conditions générales de vente. Le montant est recalculé par nos soins au prix en vigueur, puis réglé sur la page Stripe."
+          : "En validant, vous confirmez votre commande. Le montant final est recalculé par nos soins au prix en vigueur."}
       </p>
     </form>
   );

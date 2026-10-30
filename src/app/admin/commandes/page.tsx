@@ -84,7 +84,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <PageHeader eyebrow="Ventes" title="Commandes" description="Confirmez les paiements Lydia, puis suivez chaque commande jusqu'à la livraison." />
+      <PageHeader eyebrow="Ventes" title="Commandes" description="Les paiements par carte se confirment seuls ; suivez chaque commande jusqu'à la livraison." />
 
       <nav className="adm-tabs" aria-label="Filtrer les commandes">
         {filters.map((option, index) => (
@@ -131,11 +131,11 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
                       </span>
                     </td>
                     <td className="adm-align-right adm-td-aside"><strong className="adm-num" style={{ color: "var(--adm-text)" }}>{formatEuros(order.totalAmount)}</strong></td>
-                    <td data-label="Paiement"><Badge tone={payment.tone}>{payment.label}</Badge></td>
+                    <td data-label="Paiement"><Badge tone={payment.tone}>{payment.label}</Badge>{order.stripeSessionId ? <span className="adm-cell-sub"> · Carte</span> : null}</td>
                     <td data-label="Statut"><Badge tone={status.tone}>{status.label}</Badge></td>
                     <td className="adm-td-actions">
                       <div className="adm-row-actions">
-                        <OrderAdminActions layout="row" id={order.id} reference={reference} totalAmount={order.totalAmount} status={order.status} paymentStatus={order.paymentStatus} />
+                        <OrderAdminActions layout="row" id={order.id} reference={reference} totalAmount={order.totalAmount} status={order.status} paymentStatus={order.paymentStatus} method={order.stripeSessionId ? "card" : "lydia"} />
                       </div>
                     </td>
                   </tr>

@@ -19,6 +19,9 @@ type Props = {
   totalAmount: number;
   status: OrderStatusValue;
   paymentStatus: PaymentStatusValue;
+  // « card » : Stripe Checkout (paiement confirmé automatiquement par Stripe,
+  // remboursement automatique à l'annulation) ; « lydia » : confirmation manuelle.
+  method?: "card" | "lydia";
   layout?: "row" | "detail";
 };
 
@@ -45,7 +48,7 @@ const SUCCESS: Record<string, string> = {
   CONFIRMED: "Statut mis à jour",
 };
 
-export function OrderAdminActions({ id, reference, totalAmount, status, paymentStatus, layout = "detail" }: Props) {
+export function OrderAdminActions({ id, reference, totalAmount, status, paymentStatus, method = "lydia", layout = "detail" }: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
@@ -55,7 +58,10 @@ export function OrderAdminActions({ id, reference, totalAmount, status, paymentS
   const isCancelled = status === "CANCELLED";
   const isPaid = paymentStatus === "PAID";
   const next = isPaid && !isCancelled ? NEXT_STEP[status] : undefined;
-  const canConfirmPayment = !isPaid && !isCancelled && paymentStatus !== "REFUNDED";
+  const isCard = method === "card";
+  // Un paiement par carte n'est jamais confirmé à la main : seul Stripe fait foi.
+  const awaitingPayment = !isPaid && !isCancelled && paymentStatus !== "REFUNDED";
+  const canConfirmPayment = awaitingPayment && !isCard;
   const canCancel = !isCancelled && status !== "DELIVERED";
   const busy = pending || Boolean(running);
 
@@ -84,8 +90,12 @@ export function OrderAdminActions({ id, reference, totalAmount, status, paymentS
     const ok = await confirm({
       title: `Annuler la commande ${reference} ?`,
       description: isPaid
-        ? `Le stock sera restitué et la commande passera en « Remboursée ». Pensez à rembourser ${formatEuros(totalAmount)} à la cliente via Lydia. Cette action est définitive.`
-        : "Le stock réservé sera restitué. Cette action est définitive.",
+        ? isCard
+          ? `La cliente sera remboursée automatiquement de ${formatEuros(totalAmount)} sur sa carte (Stripe), le stock sera restitué et la commande passera en « Remboursée ». Cette action est définitive.`
+          : `Le stock sera restitué et la commande passera en « Remboursée ». Pensez à rembourser ${formatEuros(totalAmount)} à la cliente via Lydia. Cette action est définitive.`
+        : isCard
+          ? "La page de paiement Stripe sera fermée et le stock réservé restitué. Cette action est définitive."
+          : "Le stock réservé sera restitué. Cette action est définitive.",
       confirmLabel: "Annuler la commande",
       cancelLabel: "Conserver",
       tone: "danger",
@@ -110,7 +120,17 @@ export function OrderAdminActions({ id, reference, totalAmount, status, paymentS
       {isCancelled ? (
         <div className="adm-next">
           <p className="adm-next-title">Commande annulée</p>
-          <p>Le stock a été restitué.{paymentStatus === "REFUNDED" ? " Le paiement est marqué remboursé : vérifiez que le remboursement Lydia a bien été effectué." : ""}</p>
+          <p>
+            Le stock a été restitué.
+            {paymentStatus === "REFUNDED"
+              ? isCard ? " Le paiement a été remboursé sur la carte de la cliente (Stripe)." : " Le paiement est marqué remboursé : vérifiez que le remboursement Lydia a bien été effectué."
+              : paymentStatus === "FAILED" ? " Le paiement a été refusé." : ""}
+          </p>
+        </div>
+      ) : awaitingPayment && isCard ? (
+        <div className="adm-next" data-tone="info">
+          <p className="adm-next-title">Paiement par carte en cours</p>
+          <p>La cliente règle <strong>{formatEuros(totalAmount)}</strong> sur la page Stripe. La commande se confirme automatiquement à la réception du paiement ; sans paiement, elle est annulée et le stock restitué.</p>
         </div>
       ) : canConfirmPayment ? (
         <div className="adm-next" data-tone="warning">

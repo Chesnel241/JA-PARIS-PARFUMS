@@ -21,6 +21,8 @@ export const RATE_LIMITS = {
   applications: { scope: "applications", limit: 5, windowMs: 60 * 60 * 1000 },
   // Inscriptions newsletter : 10 / heure / IP.
   newsletter: { scope: "newsletter", limit: 10, windowMs: 60 * 60 * 1000 },
+  // Retour de paiement Stripe (vérification / annulation) : 60 / 10 min / IP.
+  checkout: { scope: "checkout", limit: 60, windowMs: 10 * 60 * 1000 },
   // Alertes « M'avertir du retour » : 10 / heure / IP.
   stockAlerts: { scope: "stock-alerts", limit: 10, windowMs: 60 * 60 * 1000 },
   // Tentatives de connexion admin, toutes adresses e-mail confondues :

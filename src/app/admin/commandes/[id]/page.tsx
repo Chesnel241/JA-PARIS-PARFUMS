@@ -7,6 +7,7 @@ import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { formatDateTime, formatEuros, formatLongDateTime, orderReference, plural } from "@/components/admin/format";
 import { ORDER_STATUS, PAYMENT_STATUS } from "@/components/admin/labels";
 import { getAdminOrder } from "@/lib/order-service";
+import { dashboardPaymentUrl } from "@/lib/stripe";
 
 export const metadata = { title: "Commande" };
 export const dynamic = "force-dynamic";
@@ -97,8 +98,28 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
           <Card title="Paiement">
             <dl className="adm-dl">
-              <div><dt>Moyen</dt><dd>Lien de paiement Lydia (confirmation manuelle)</dd></div>
-              <div><dt>Référence à rechercher sur Lydia</dt><dd><span className="adm-code">{reference}</span> · {formatEuros(order.totalAmount)}</dd></div>
+              {order.stripeSessionId ? (
+                <>
+                  <div><dt>Moyen</dt><dd>Carte bancaire · Stripe Checkout (confirmation automatique)</dd></div>
+                  <div>
+                    <dt>Paiement Stripe</dt>
+                    <dd>
+                      {order.stripePaymentIntentId ? (
+                        <a className="adm-link" href={dashboardPaymentUrl(order.stripePaymentIntentId)} target="_blank" rel="noopener noreferrer">
+                          Voir dans le Dashboard Stripe <span className="adm-code">{order.stripePaymentIntentId}</span>
+                        </a>
+                      ) : (
+                        <span className="adm-muted">Pas encore encaissé (session <span className="adm-code">{order.stripeSessionId.slice(0, 18)}…</span>)</span>
+                      )}
+                    </dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div><dt>Moyen</dt><dd>Lien de paiement Lydia (confirmation manuelle)</dd></div>
+                  <div><dt>Référence à rechercher sur Lydia</dt><dd><span className="adm-code">{reference}</span> · {formatEuros(order.totalAmount)}</dd></div>
+                </>
+              )}
               <div><dt>Statut du paiement</dt><dd><Badge tone={payment.tone}>{payment.label}</Badge></dd></div>
               <div><dt>Dernière mise à jour</dt><dd>{formatDateTime(order.updatedAt)}</dd></div>
             </dl>
@@ -107,7 +128,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
         <aside className="adm-form-aside" aria-label="Actions et client">
           <Card title="Actions">
-            <OrderAdminActions id={order.id} reference={reference} totalAmount={order.totalAmount} status={order.status} paymentStatus={order.paymentStatus} />
+            <OrderAdminActions id={order.id} reference={reference} totalAmount={order.totalAmount} status={order.status} paymentStatus={order.paymentStatus} method={order.stripeSessionId ? "card" : "lydia"} />
           </Card>
 
           <Card title="Cliente">
