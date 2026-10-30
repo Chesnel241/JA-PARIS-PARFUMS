@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { CircleAlert, Copy, ExternalLink, Gem, Plus, SprayCan, Trash2 } from "lucide-react";
 import { adminRequest, type FieldErrors } from "@/components/admin/api";
 import { useConfirm } from "@/components/admin/confirm";
-import { SaveBar, Switch, TextAreaField, TextField, focusFirstInvalid, useUnsavedChanges } from "@/components/admin/form";
+import { SaveBar, SelectField, Switch, TextAreaField, TextField, focusFirstInvalid, useUnsavedChanges } from "@/components/admin/form";
 import { formatEuros, slugify } from "@/components/admin/format";
 import { TagInput } from "@/components/admin/tag-input";
 import { useToast } from "@/components/admin/toast";
 import { Badge, Card, PageHeader } from "@/components/admin/ui";
 import { ProductImagesField } from "@/components/product-images-field";
+import { HOUR_PATTERN, PALETTES, PALETTE_KEYS, paletteOf } from "@/lib/heures";
 
 type ProductCategoryValue = "PARFUM" | "ACCESSOIRE";
 type VariantDraft = { key: string; sku: string; volume: string; price: string; stock: string; isActive: boolean };
@@ -26,10 +27,18 @@ type ProductInput = {
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
+  tagline: string;
+  family: string;
+  moment: string;
+  hour: string | null;
+  hourFrom: string | null;
+  palette: string;
   isActive: boolean;
   variants: { sku: string; volume: string; price: number; stock: number; isActive: boolean }[];
 };
-type Draft = Omit<ProductInput, "id" | "variants"> & { variants: VariantDraft[] };
+type Draft = Omit<ProductInput, "id" | "variants" | "hour" | "hourFrom"> & { hour: string; hourFrom: string; variants: VariantDraft[] };
+
+const PALETTE_OPTIONS = [{ value: "", label: "Choisir une lumière…" }, ...PALETTE_KEYS.map((key) => ({ value: key, label: PALETTES[key].label }))];
 
 const SKU_PATTERN = /^[A-Z0-9_-]+$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -62,6 +71,12 @@ function toDraft(product?: ProductInput): Draft {
     notesTop: product?.notesTop ?? [],
     notesHeart: product?.notesHeart ?? [],
     notesBase: product?.notesBase ?? [],
+    tagline: product?.tagline ?? "",
+    family: product?.family ?? "",
+    moment: product?.moment ?? "",
+    hour: product?.hour ?? "",
+    hourFrom: product?.hourFrom ?? "",
+    palette: product?.palette ?? "",
     isActive: product?.isActive ?? false,
     variants: product?.variants.length
       ? product.variants.map((variant, index) => ({ key: `v${index}`, sku: variant.sku, volume: variant.volume, price: centsToInput(variant.price), stock: String(variant.stock), isActive: variant.isActive }))
@@ -79,6 +94,11 @@ function validate(draft: Draft): FieldErrors {
   if (draft.description.trim().length < 10) errors.description = "10 caractères minimum.";
   if (draft.story.trim().length < 10) errors.story = "10 caractères minimum.";
   if (draft.images.length === 0) errors.images = "Ajoutez au moins une image.";
+  if (draft.category === "PARFUM") {
+    if (draft.hour && !HOUR_PATTERN.test(draft.hour)) errors.hour = "Format HH:MM, de 00:00 à 23:59 (ex. 19:00).";
+    if (draft.hourFrom && !HOUR_PATTERN.test(draft.hourFrom)) errors.hourFrom = "Format HH:MM, de 00:00 à 23:59 (ex. 16:00).";
+    else if (draft.hourFrom && !draft.hour) errors.hourFrom = "Indiquez d'abord l'heure signature.";
+  }
   const skus = new Set<string>();
   const volumes = new Set<string>();
   draft.variants.forEach((variant, index) => {
@@ -158,6 +178,12 @@ export function ProductAdminForm({ product, canDelete = false, duplicatedFrom }:
       notesTop: isParfum ? draft.notesTop : [],
       notesHeart: isParfum ? draft.notesHeart : [],
       notesBase: isParfum ? draft.notesBase : [],
+      tagline: draft.tagline.trim(),
+      family: isParfum ? draft.family.trim() : "",
+      moment: isParfum ? draft.moment.trim() : "",
+      hour: isParfum && draft.hour ? draft.hour : null,
+      hourFrom: isParfum && draft.hour && draft.hourFrom ? draft.hourFrom : null,
+      palette: isParfum ? draft.palette : "",
       isActive: draft.isActive,
       variants: draft.variants.map((variant) => ({
         sku: variant.sku.trim().toUpperCase(),
@@ -239,6 +265,10 @@ export function ProductAdminForm({ product, canDelete = false, duplicatedFrom }:
               <TextField id="product-slug" label="Adresse de la page" required value={draft.slug} maxLength={140} error={errors.slug} prefix="/produit/"
                 hint="Générée depuis le nom. Évitez de la modifier une fois le produit partagé."
                 onChange={(value) => { setSlugTouched(true); update("slug", slugify(value)); }} />
+              <TextField id="product-tagline" label="Accroche" optional value={draft.tagline} maxLength={140} error={errors.tagline}
+                placeholder={isParfum ? "Ex. L’élégance de ce qu’on laisse deviner." : "Ex. Boucles d’oreilles en laiton doré"}
+                hint="Une phrase courte, affichée sous le nom."
+                onChange={(value) => update("tagline", value)} />
               <TextAreaField id="product-description" label="Description courte" required rows={3} value={draft.description} maxLength={2000} showCount error={errors.description}
                 hint="Affichée sous le nom, dans la fiche et les listes. Une ou deux phrases."
                 onChange={(value) => update("description", value)} />
@@ -247,7 +277,7 @@ export function ProductAdminForm({ product, canDelete = false, duplicatedFrom }:
                 onChange={(value) => update("story", value)} />
             </Card>
 
-            <Card title="Images" description="La première image est l'image principale de la fiche et des listes.">
+            <Card title="Images" description="La première image est l'image principale de la fiche et des listes ; la deuxième apparaît au survol des cartes et sur la carte du quiz.">
               <ProductImagesField images={draft.images} onChange={(images) => update("images", images)} error={errors.images} />
             </Card>
 
@@ -282,6 +312,33 @@ export function ProductAdminForm({ product, canDelete = false, duplicatedFrom }:
                 </fieldset>
               ))}
             </Card>
+
+            {isParfum && (
+              <Card title="L’heure du parfum" description="Chaque parfum porte une heure de la journée : elle anime l’accueil, la frise de la collection et le quiz « Trouver mon heure ». Facultatif : sans heure, le parfum reste en vente mais n’apparaît pas sur la frise.">
+                <div className="adm-form-row adm-form-row--2">
+                  <TextField id="product-hour" label="Heure signature" optional value={draft.hour} maxLength={5} inputMode="numeric" placeholder="19:00" error={errors.hour}
+                    hint="Affichée sur les cartes (« 19:00 · Entre chien et loup »)."
+                    onChange={(value) => update("hour", value.replace(/[^\d:]/g, ""))} />
+                  <TextField id="product-hour-from" label="C’est son heure à partir de" optional value={draft.hourFrom} maxLength={5} inputMode="numeric" placeholder="16:00" error={errors.hourFrom}
+                    hint="Jusqu’au créneau du parfum suivant. Vide : à partir de l’heure signature."
+                    onChange={(value) => update("hourFrom", value.replace(/[^\d:]/g, ""))} />
+                  <TextField id="product-moment" label="Moment de la journée" optional value={draft.moment} maxLength={60} placeholder="Entre chien et loup" error={errors.moment}
+                    onChange={(value) => update("moment", value)} />
+                  <TextField id="product-family" label="Famille olfactive" optional value={draft.family} maxLength={80} placeholder="Floral fruité · poudré" error={errors.family}
+                    onChange={(value) => update("family", value)} />
+                </div>
+                <SelectField id="product-palette" label="Lumière" optional value={draft.palette} options={PALETTE_OPTIONS} error={errors.palette}
+                  hint="Couleurs du parfum sur le site : pastilles, frise de la journée et flacon illustré (quand il n’y a pas encore de photo)."
+                  onChange={(value) => update("palette", value)} />
+                {draft.palette ? (
+                  <div aria-hidden style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+                    {[paletteOf(draft.palette).tint, paletteOf(draft.palette).accent, paletteOf(draft.palette).band].map((color) => (
+                      <span key={color} style={{ width: 28, height: 28, borderRadius: 999, background: color, border: "1px solid var(--adm-border)" }} />
+                    ))}
+                  </div>
+                ) : null}
+              </Card>
+            )}
 
             {isParfum && (
               <Card title="Notes olfactives" description="Affichées sur la fiche produit. Facultatif.">

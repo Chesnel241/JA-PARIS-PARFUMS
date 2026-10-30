@@ -31,6 +31,7 @@ Réponse : **429** `{ error: "… Merci de réessayer dans N minutes.", retryAft
 | `POST /api/orders` | 10 / 10 min / IP | après validation (une faute de saisie ne consomme pas le quota) |
 | `POST /api/ambassador-applications` | 5 / h / IP | après validation, hors pot de miel |
 | `POST /api/newsletter` | 10 / h / IP | après validation, hors pot de miel |
+| `POST /api/stock-alerts` | 10 / h / IP | après validation, hors pot de miel |
 | Connexion admin | 30 tentatives / 15 min / IP **et** 5 échecs / 15 min par couple e-mail+IP (blocage 15 min) | chaque tentative |
 
 ---
@@ -94,6 +95,10 @@ Corps : `{ firstName (1–60), lastName (1–60), email, phone?, instagram?, cit
 Corps : `{ email, website? }`. Idempotent (adresse déjà inscrite → 201).
 - 201 `{ "ok": true }` · 422 `{ error: "Adresse e-mail invalide.", fields }` · 429
 
+### `POST /api/stock-alerts` — « M'avertir du retour »
+Corps : `{ email, slug, volume (1–32), website? }`. Uniquement pour une contenance **épuisée** d'un produit publié. Idempotent (même e-mail, produit et contenance → 201, alerte réarmée). Requête dont l'en-tête `Origin` désigne un autre site → 403.
+- 201 `{ "ok": true }` · 403 · 404 (produit ou contenance inconnus) · 409 (contenance de nouveau en stock) · 422 · 429
+
 ### `GET /api/articles`
 Articles publiés : `{ articles: [{ id, title, slug, excerpt, coverImage, publishedAt }] }`.
 
@@ -122,8 +127,9 @@ Toutes : 401 `{ error: "Non autorisé." }` sans session valide.
 | `PATCH /api/admin/products/[id]` | `{ isActive: boolean }` | 200 `{ product }` · 404 · 422 |
 | `DELETE /api/admin/products/[id]` | — | 204 · 403 (EDITOR) · 404 · 409 `code: "PRODUCT_HAS_ORDERS"` (dépublier à la place) |
 
-`ProductInput` : `{ name (2–120), slug (a-z0-9-), category: "PARFUM"|"ACCESSOIRE", description (10–2000), story (10–10000), images: string[1–12] (chemin "/…" ou URL http(s)), notesTop/notesHeart/notesBase: string[≤12], isActive, variants: [{ sku (A-Z0-9_-), volume, price, stock, isActive }] (1–12, SKU et contenances uniques) }`.
-Revalide : `/`, `/boutique`, `/accessoires`, `/recherche`, `/produit/<slug>` (+ ancien slug), `/sitemap.xml`, `/admin`, `/admin/produits[/id]`.
+`ProductInput` : `{ name (2–120), slug (a-z0-9-), category: "PARFUM"|"ACCESSOIRE", description (10–2000), story (10–10000), images: string[1–12] (chemin "/…" ou URL http(s)), notesTop/notesHeart/notesBase: string[≤12], tagline? (≤140), family? (≤80), moment? (≤60), hour? ("HH:MM"), hourFrom? ("HH:MM", exige hour), palette? (soleil|poudre|grenat|lilas|sauge|ambre|encre|or), isActive, variants: [{ sku (A-Z0-9_-), volume, price, stock, isActive }] (1–12, SKU et contenances uniques) }`.
+« Les Heures » : `hour` est l'heure signature affichée ; le parfum est « l'heure de » à partir de `hourFrom` (à défaut `hour`) jusqu'au début du créneau suivant. Ces champs sont ignorés pour un accessoire.
+Revalide : layout public, `/`, `/boutique`, `/accessoires`, `/recherche`, `/produit/<slug>` (+ ancien slug), `/sitemap.xml`, `/admin`, `/admin/produits[/id]`.
 
 ### Articles (Journal)
 | Méthode & route | Corps | Réponses |
@@ -168,6 +174,14 @@ Revalide `/ambassadrices` ou `/boutiques`, `/` et la page admin correspondante.
 
 **CSV** : UTF-8 avec BOM, séparateur `;` (Excel FR ; Google Sheets le détecte), RFC 4180 (guillemets doublés, champs multi-lignes), cellules commençant par `= + - @` tabulation ou retour chariot préfixées d'une apostrophe (anti-injection de formules), `Content-Disposition: attachment; filename="…-AAAA-MM-JJ.csv"`. Lien direct utilisable : `<a href="/api/admin/newsletter?format=csv" download>`.
 
+### Alertes retour
+| Méthode & route | Corps | Réponses |
+|---|---|---|
+| `GET /api/admin/stock-alerts` | — | 200 `{ alerts: [{ id, email, volume, stock, createdAt, notifiedAt, product: { id, name, slug } }] }` (`stock` = stock actuel de la contenance) |
+| `GET /api/admin/stock-alerts?format=csv` | — | 200 `text/csv` |
+| `PATCH /api/admin/stock-alerts/[id]` | `{ notified: boolean }` | 200 `{ alert }` · 404 · 422 |
+| `DELETE /api/admin/stock-alerts/[id]` | — | 204 · 404 |
+
 ### Commandes
 | Méthode & route | Corps | Réponses |
 |---|---|---|
@@ -193,7 +207,7 @@ Le type MIME stocké est celui **détecté** (magic bytes), le nom de fichier es
 ### Réglages (images du site)
 | Méthode & route | Corps | Réponses |
 |---|---|---|
-| `GET /api/admin/settings` | — | 200 `{ images: { "home.hero.image": "…", … }, slots: IMAGE_SLOTS }` |
+| `GET /api/admin/settings` | — | 200 `{ images: { "home.campaign.image": "…", … }, slots: IMAGE_SLOTS }` |
 | `PUT /api/admin/settings` | `{ key: <IMAGE_SLOTS.key>, value: "<image>" \| "" }` (`""` = image d'origine) | 200 `{ images }` · 422 |
 
 Revalide tout l'arbre public (`revalidatePath("/", "layout")`) et `/admin/apparence`.

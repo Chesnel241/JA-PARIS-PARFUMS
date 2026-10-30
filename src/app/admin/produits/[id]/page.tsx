@@ -26,6 +26,12 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         notesTop: product.notesTop,
         notesHeart: product.notesHeart,
         notesBase: product.notesBase,
+        tagline: product.tagline,
+        family: product.family,
+        moment: product.moment,
+        hour: product.hour,
+        hourFrom: product.hourFrom,
+        palette: product.palette,
         isActive: product.isActive,
         variants: product.variants.map((variant) => ({ sku: variant.sku, volume: variant.volume, price: variant.price, stock: variant.stock, isActive: variant.isActive })),
       }}

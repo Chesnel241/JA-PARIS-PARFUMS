@@ -27,9 +27,10 @@ async function main() {
     },
   });
 
-  for (const [productIndex, product] of products.entries()) {
-    const variants = product.variants.map((variant, variantIndex) => ({
-      sku: `JAE-${String(productIndex + 1).padStart(2, "0")}-${String(variantIndex + 1).padStart(2, "0")}`,
+  for (const product of products) {
+    // SKU stable, dérivé du slug et de la contenance (ex. JAE-ILLUSION-100-ML).
+    const variants = product.variants.map((variant) => ({
+      sku: `JAE-${product.slug}-${variant.volume}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64),
       volume: variant.volume,
       price: variant.price,
       stock: variant.stock,
@@ -40,10 +41,16 @@ async function main() {
       category: product.category,
       description: product.description,
       story: product.story,
-      images: [product.image],
+      images: product.images,
       notesTop: product.notes.top,
       notesHeart: product.notes.heart,
       notesBase: product.notes.base,
+      tagline: product.tagline,
+      family: product.family,
+      moment: product.moment,
+      hour: product.hour,
+      hourFrom: product.hourFrom,
+      palette: product.palette,
       isActive: true,
     };
 
@@ -56,25 +63,27 @@ async function main() {
 
   const demoArticles = [
     {
-      slug: "secrets-de-fabrication",
-      title: "Les secrets de fabrication de nos parfums",
-      excerpt: "Des matières premières à la mise en flacon, plongée dans l'atelier où naissent nos sillages.",
-      content: "Chaque parfum JAE naît d'une rencontre entre un nez, une émotion et des matières d'exception.\n\nNous sélectionnons chaque ingrédient à la main : safran de Taliouine, rose centifolia de Grasse, santal de Nouvelle-Calédonie. Les accords reposent ensuite plusieurs semaines, le temps que la matière s'exprime pleinement.\n\nC'est ce temps long, rare dans l'industrie, qui donne à nos créations leur profondeur et leur tenue.",
-      coverImage: "/craft.jpg",
+      slug: "ou-vaporiser-son-parfum",
+      title: "Où vaporiser son parfum pour que le sillage dure",
+      excerpt: "Un bon parfum mal posé disparaît en une heure. Cinq gestes simples changent tout.",
+      content: [
+        "Un bon parfum mal posé disparaît en une heure. Cinq gestes simples changent tout.",
+        [
+          "1. Sur les points chauds — Le cou, l’arrière des oreilles, l’intérieur des poignets et des coudes. La chaleur de la peau diffuse le parfum autour de vous.",
+          "2. Sans frotter — Frotter ses poignets l’un contre l’autre écrase les notes de tête et accélère leur évaporation. Laissez sécher, tout simplement.",
+          "3. Sur une peau hydratée — Une peau sèche retient moins bien le parfum. Une crème neutre appliquée juste avant aide le sillage à tenir.",
+          "4. À 15 ou 20 centimètres — Assez loin pour couvrir une zone, assez près pour ne pas perdre la moitié du parfum dans l’air.",
+          "5. Sur les vêtements, avec prudence — Les fibres gardent l’odeur longtemps. Testez d’abord sur une zone cachée : certaines matières claires ou fragiles peuvent marquer.",
+        ].join("\n"),
+      ].join("\n\n"),
+      coverImage: "/maison/illusion-cou.jpg",
     },
     {
       slug: "choisir-sa-signature-olfactive",
       title: "L'art de choisir sa signature olfactive",
       excerpt: "Un parfum n'est pas un accessoire : c'est une présence. Nos conseils pour trouver la vôtre.",
       content: "Choisir un parfum, c'est choisir la trace que l'on laisse.\n\nCommencez par identifier la famille qui vous attire : boisée, florale, ambrée. Portez ensuite le parfum sur peau une journée entière — un sillage se révèle dans le temps, jamais sur une mouillette.\n\nEnfin, écoutez les autres : une signature olfactive se reconnaît aux compliments qu'elle provoque.",
-      coverImage: "/essence.jpg",
-    },
-    {
-      slug: "coulisses-illusion",
-      title: "Dans les coulisses de la création d'Illusion",
-      excerpt: "Notre best-seller a demandé dix-huit mois de travail. Récit d'une obsession.",
-      content: "Illusion devait capturer un moment précis : la lumière dorée d'une fin d'après-midi d'été.\n\nDix-huit mois de travail, quarante-trois essais, une concentration en parfum de 24 %. Le résultat : un floral lumineux enveloppé d'un musc délicat, devenu la signature de la maison.\n\nIllusion est aujourd'hui notre création la plus portée — et celle dont nous sommes le plus fiers.",
-      coverImage: "/bestseller.jpg",
+      coverImage: "/maison/illusion-table.jpg",
     },
   ];
 

@@ -25,3 +25,12 @@ export async function uploadMedia(
 ) {
   return adminRequest.post("/api/admin/media", { multipart: { file } });
 }
+
+export type StockAlertRow = { id: string; email: string; volume: string; stock: number; notifiedAt: string | null; product: { id: string; slug: string } };
+
+export async function findStockAlerts(adminRequest: APIRequestContext, email: string): Promise<StockAlertRow[]> {
+  const response = await adminRequest.get("/api/admin/stock-alerts");
+  await expectStatus(response, 200, "liste des alertes retour");
+  const { alerts } = (await response.json()) as { alerts: StockAlertRow[] };
+  return alerts.filter((alert) => alert.email === email.toLowerCase());
+}

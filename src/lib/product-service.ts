@@ -4,6 +4,19 @@ import type { ProductInput } from "@/lib/product-validation";
 
 const productInclude = { variants: { orderBy: { price: "asc" as const } } };
 
+// Champs « Les Heures » : réservés aux parfums (un accessoire n'a pas d'heure).
+function heureFields(input: ProductInput) {
+  const isParfum = input.category === "PARFUM";
+  return {
+    tagline: input.tagline,
+    family: isParfum ? input.family : "",
+    moment: isParfum ? input.moment : "",
+    hour: isParfum ? input.hour : null,
+    hourFrom: isParfum && input.hour ? input.hourFrom : null,
+    palette: isParfum ? input.palette : "",
+  };
+}
+
 export function listAdminProducts() {
   return prisma.product.findMany({ include: productInclude, orderBy: { updatedAt: "desc" } });
 }
@@ -24,6 +37,7 @@ export function createAdminProduct(input: ProductInput) {
       notesTop: input.notesTop,
       notesHeart: input.notesHeart,
       notesBase: input.notesBase,
+      ...heureFields(input),
       isActive: input.isActive,
       variants: { create: input.variants },
     },
@@ -46,6 +60,7 @@ export async function updateAdminProduct(id: string, input: ProductInput) {
         notesTop: input.notesTop,
         notesHeart: input.notesHeart,
         notesBase: input.notesBase,
+        ...heureFields(input),
         isActive: input.isActive,
         variants: { create: input.variants },
       },

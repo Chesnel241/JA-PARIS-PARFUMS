@@ -42,6 +42,13 @@ export type ProductInput = {
   notesTop: string[];
   notesHeart: string[];
   notesBase: string[];
+  // « Les Heures » (facultatif).
+  tagline?: string;
+  family?: string;
+  moment?: string;
+  hour?: string | null;
+  hourFrom?: string | null;
+  palette?: string;
   isActive: boolean;
   variants: VariantInput[];
 };

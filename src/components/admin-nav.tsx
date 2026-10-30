@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Images, Inbox, LayoutDashboard, Mail, Package, Palette, ShoppingBag, Sparkles, Store } from "lucide-react";
+import { BellRing, BookOpen, Images, Inbox, LayoutDashboard, Mail, Package, Palette, ShoppingBag, Sparkles, Store } from "lucide-react";
 
-export type AdminBadges = { orders: number; applications: number };
+export type AdminBadges = { orders: number; applications: number; alerts: number };
 
 type NavItem = { label: string; href: string; icon: typeof Package; badge?: keyof AdminBadges; badgeLabel?: string };
 
@@ -15,6 +15,7 @@ const sections: { title?: string; items: NavItem[] }[] = [
     items: [
       { label: "Commandes", href: "/admin/commandes", icon: ShoppingBag, badge: "orders", badgeLabel: "commandes à traiter" },
       { label: "Produits", href: "/admin/produits", icon: Package },
+      { label: "Alertes retour", href: "/admin/alertes", icon: BellRing, badge: "alerts", badgeLabel: "clientes à prévenir d'un retour en stock" },
     ],
   },
   {

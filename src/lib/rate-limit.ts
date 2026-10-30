@@ -21,6 +21,8 @@ export const RATE_LIMITS = {
   applications: { scope: "applications", limit: 5, windowMs: 60 * 60 * 1000 },
   // Inscriptions newsletter : 10 / heure / IP.
   newsletter: { scope: "newsletter", limit: 10, windowMs: 60 * 60 * 1000 },
+  // Alertes « M'avertir du retour » : 10 / heure / IP.
+  stockAlerts: { scope: "stock-alerts", limit: 10, windowMs: 60 * 60 * 1000 },
   // Tentatives de connexion admin, toutes adresses e-mail confondues :
   // 30 / 15 min / IP (en plus du verrou 5 échecs par e-mail + IP).
   loginIp: { scope: "login-ip", limit: 30, windowMs: 15 * 60 * 1000 },

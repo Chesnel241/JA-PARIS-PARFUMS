@@ -67,13 +67,42 @@ model Product {
   notesTop    String[]
   notesHeart  String[]
   notesBase   String[]
+  // « Les Heures » : chaque parfum porte une heure de la journée.
+  // tagline : accroche courte ; family : famille olfactive.
+  tagline     String           @default("")
+  family      String           @default("")
+  // Heure signature affichée (« 19:00 ») et début de son créneau (« 16:00 ») :
+  // c'est « l'heure de » ce parfum jusqu'au début du créneau suivant.
+  hour        String?
+  hourFrom    String?
+  // Moment de la journée (« Entre chien et loup »).
+  moment      String           @default("")
+  // Palette de lumière (clé de src/lib/heures.ts : soleil, poudre, grenat…).
+  palette     String           @default("")
   isActive    Boolean          @default(false)
   variants    ProductVariant[]
   orderItems  OrderItem[]
+  stockAlerts StockAlert[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   @@index([isActive, category, createdAt])
+}
+
+// « M'avertir du retour » : demande d'alerte quand une contenance épuisée
+// revient en stock. Une seule demande par e-mail, produit et contenance.
+model StockAlert {
+  id         String    @id @default(cuid())
+  email      String
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  volume     String
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([email, productId, volume])
+  @@index([productId, volume])
+  @@index([createdAt])
 }
 
 model ProductVariant {

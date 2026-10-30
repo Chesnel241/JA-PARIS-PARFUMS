@@ -19,6 +19,12 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
     notesTop: source.notesTop,
     notesHeart: source.notesHeart,
     notesBase: source.notesBase,
+    tagline: source.tagline,
+    family: source.family,
+    moment: source.moment,
+    hour: source.hour,
+    hourFrom: source.hourFrom,
+    palette: source.palette,
     isActive: false,
     variants: source.variants.map((variant) => ({ sku: "", volume: variant.volume, price: variant.price, stock: 0, isActive: variant.isActive })),
   } : undefined;

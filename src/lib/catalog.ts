@@ -1,29 +1,45 @@
+import { cache } from "react";
 import { ProductCategory } from "@prisma/client";
 import type { Product as CatalogProduct } from "@/lib/data";
+import { isPaletteKey, paletteOf } from "@/lib/heures";
+import { isPlaceholderImage } from "@/lib/placeholder";
 import { prisma } from "@/lib/prisma";
 
 const catalogInclude = { variants: { where: { isActive: true }, orderBy: { price: "asc" as const } } };
 
-function toCatalogProduct(product: Awaited<ReturnType<typeof prisma.product.findFirstOrThrow>> & { variants: { volume: string; price: number; stock: number }[] }): CatalogProduct {
+type ProductRow = Awaited<ReturnType<typeof prisma.product.findFirstOrThrow>> & { variants: { volume: string; price: number; stock: number }[] };
+
+function toCatalogProduct(product: ProductRow): CatalogProduct {
+  const isAccessory = product.category === ProductCategory.ACCESSOIRE;
+  const images = product.images.length > 0 ? product.images : ["/parfum-noir.svg"];
+  const palette = isPaletteKey(product.palette) && !isAccessory ? product.palette : "";
   return {
     slug: product.slug,
     name: product.name,
     category: product.category,
-    subtitle: product.category === ProductCategory.ACCESSOIRE ? "Accessoire JAE Paris" : "Parfum JAE Paris",
+    subtitle: isAccessory ? "Accessoire JAE Paris" : "Eau de parfum",
     description: product.description,
     story: product.story,
-    image: product.images[0] ?? "/parfum-noir.svg",
-    images: product.images.length > 0 ? product.images : ["/parfum-noir.svg"],
-    accent: "#9b6b43",
+    image: images[0],
+    images,
+    hasPhoto: images.some((image) => !isPlaceholderImage(image)),
+    accent: paletteOf(palette).accent,
     notes: { top: product.notesTop, heart: product.notesHeart, base: product.notesBase },
-    variants: product.variants,
+    variants: product.variants.map(({ volume, price, stock }) => ({ volume, price, stock })),
+    tagline: product.tagline,
+    family: isAccessory ? "" : product.family,
+    moment: isAccessory ? "" : product.moment,
+    hour: isAccessory ? null : product.hour,
+    hourFrom: isAccessory ? null : product.hourFrom,
+    palette,
   };
 }
 
-export async function getPublicProducts(category?: ProductCategory) {
+// Dédoublonné sur la durée d'un rendu (layout + page partagent la requête).
+const loadPublicProducts = cache(async (): Promise<CatalogProduct[]> => {
   try {
     const products = await prisma.product.findMany({
-      where: { isActive: true, ...(category ? { category } : {}) },
+      where: { isActive: true },
       include: catalogInclude,
       orderBy: { createdAt: "asc" },
     });
@@ -34,6 +50,11 @@ export async function getPublicProducts(category?: ProductCategory) {
     console.error("[catalog] getPublicProducts a échoué :", error);
     return [];
   }
+});
+
+export async function getPublicProducts(category?: ProductCategory) {
+  const products = await loadPublicProducts();
+  return category ? products.filter((product) => product.category === category) : products;
 }
 
 export async function getPublicProduct(slug: string) {

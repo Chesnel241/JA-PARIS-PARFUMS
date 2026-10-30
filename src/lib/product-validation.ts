@@ -1,5 +1,6 @@
 import { z } from "zod";
 import "@/lib/zod-fr";
+import { HOUR_PATTERN, PALETTE_KEYS } from "@/lib/heures";
 
 // An image reference must be either a site-relative path ("/foo.jpg") or an
 // absolute http(s) URL. This rejects dangerous schemes such as "javascript:",
@@ -35,6 +36,19 @@ export const productVariantInputSchema = z.object({
 
 export const productCategorySchema = z.enum(["PARFUM", "ACCESSOIRE"]);
 
+// Heure « HH:MM » facultative : chaîne vide ou absente → null.
+const optionalHourSchema = z
+  .string()
+  .trim()
+  .max(5)
+  .refine((value) => value === "" || HOUR_PATTERN.test(value), { message: "Heure invalide : format HH:MM, de 00:00 à 23:59." })
+  .transform((value) => (value === "" ? null : value))
+  .nullish()
+  .transform((value) => value ?? null);
+
+// Textes courts sans retour à la ligne (accroche, famille, moment).
+const shortLineSchema = (max: number) => z.string().trim().max(max).regex(/^[^\r\n]*$/, "Une seule ligne.").default("");
+
 export const productInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   slug: z.string().trim().toLowerCase().min(2).max(140).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -45,9 +59,16 @@ export const productInputSchema = z.object({
   notesTop: z.array(z.string().trim().min(1).max(80)).max(12),
   notesHeart: z.array(z.string().trim().min(1).max(80)).max(12),
   notesBase: z.array(z.string().trim().min(1).max(80)).max(12),
+  tagline: shortLineSchema(140),
+  family: shortLineSchema(80),
+  moment: shortLineSchema(60),
+  hour: optionalHourSchema,
+  hourFrom: optionalHourSchema,
+  palette: z.union([z.enum(PALETTE_KEYS as [string, ...string[]]), z.literal("")]).default(""),
   isActive: z.boolean(),
   variants: z.array(productVariantInputSchema).min(1).max(12),
 }).superRefine((product, context) => {
+  if (product.hourFrom && !product.hour) context.addIssue({ code: "custom", path: ["hourFrom"], message: "Indiquez d'abord l'heure signature du parfum." });
   const skus = new Set<string>();
   const volumes = new Set<string>();
   product.variants.forEach((variant, index) => {

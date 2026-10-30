@@ -30,10 +30,13 @@ const cleanSlugs = (slugs: (string | null | undefined)[]) =>
   [...new Set(slugs.filter((slug): slug is string => typeof slug === "string" && slug.length > 0))];
 
 // Produits : accueil, boutique, accessoires, recherche, fiches produit (y
-// compris l'ancien slug en cas de renommage), sitemap, pages admin.
+// compris l'ancien slug en cas de renommage), sitemap, pages admin. Le
+// catalogue alimente aussi l'habillage (menu, recherche, horloge) : le layout
+// public est invalidé pour que les pages statiques (CGV…) suivent.
 export function revalidateCatalog(options: { slugs?: (string | null | undefined)[]; productId?: string } = {}) {
   const slugs = cleanSlugs(options.slugs ?? []);
   revalidate([
+    { path: "/", type: "layout" },
     "/",
     "/boutique",
     "/accessoires",
@@ -82,12 +85,17 @@ export function revalidateAmbassadors() {
   revalidate(["/ambassadrices", "/", "/admin/ambassadrices"]);
 }
 
+// Le pied de page affiche « Points de vente » selon qu'il existe des boutiques.
 export function revalidateStores() {
-  revalidate(["/boutiques", "/", "/admin/boutiques"]);
+  revalidate([{ path: "/", type: "layout" }, "/boutiques", "/", "/admin/boutiques"]);
 }
 
 export function revalidateApplications() {
   revalidate(["/admin", "/admin/candidatures", "/admin/ambassadrices"]);
+}
+
+export function revalidateStockAlerts() {
+  revalidate(["/admin", "/admin/alertes"]);
 }
 
 export function revalidateNewsletter() {
