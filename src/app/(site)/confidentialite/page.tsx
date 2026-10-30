@@ -11,7 +11,7 @@ export function generateMetadata() {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Politique de confidentialité" updated="23 septembre 2026" intro="Nous collectons uniquement les données nécessaires, et ne les vendons jamais.">
+    <LegalPage title="Politique de confidentialité" updated="30 octobre 2026" intro="Nous collectons uniquement les données nécessaires, et ne les vendons jamais.">
       <section>
         <h2>Responsable du traitement</h2>
         <p><Todo>raison sociale</Todo>, <Todo>siège social</Todo>. Contact pour toute question relative à vos données : <Todo>e-mail</Todo>.</p>
@@ -34,6 +34,11 @@ export default function PrivacyPage() {
         <p>
           Adresse e-mail, pour vous envoyer nos nouveautés (consentement). Vous pouvez vous désinscrire à tout moment ;
           l’adresse est alors supprimée. À défaut, elle est conservée 3 ans après votre dernière interaction.
+        </p>
+        <h3>Alertes de retour en stock</h3>
+        <p>
+          Adresse e-mail et création demandée (produit et contenance), pour vous prévenir de son retour (consentement).
+          L’alerte est supprimée sur simple demande ; à défaut, elle est conservée 1 an.
         </p>
         <h3>Paiement</h3>
         <p>Le paiement est traité par Lydia. JAE Paris ne reçoit ni ne conserve vos données bancaires.</p>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Play, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { adminRequest, isValidImageReference } from "@/components/admin/api";
 import { useConfirm } from "@/components/admin/confirm";
 import { SubmitButton, useUnsavedChanges } from "@/components/admin/form";
@@ -12,33 +12,21 @@ import { ImageUploader } from "@/components/image-uploader";
 
 type Slot = { key: string; label: string; description: string; defaultValue: string; current: string };
 
-// Reproduit le cadrage de chaque emplacement de la page d'accueil.
+// Reproduit le cadrage de chaque emplacement du site.
 function SlotPreview({ slotKey, src }: { slotKey: string; src: string }) {
   /* eslint-disable @next/next/no-img-element */
-  if (slotKey === "home.hero.image") {
-    return <div className="adm-slot-preview" data-variant="hero"><img src={src} alt="Aperçu : image du héro" /></div>;
+  if (slotKey === "home.campaign.image") {
+    return <div className="adm-slot-preview" style={{ aspectRatio: "4 / 5", maxWidth: 260 }}><img src={src} alt="Aperçu : photo de campagne" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 18 }} /></div>;
   }
-  if (slotKey === "home.hero.card") {
-    return (
-      <div className="adm-slot-preview" data-variant="card">
-        <div className="adm-slot-card">
-          <div className="adm-slot-card-img">
-            <img src={src} alt="Aperçu : carte flottante" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-            <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}><span style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 999, background: "#e93963", color: "#fff" }}><Play size={16} fill="currentColor" aria-hidden /></span></span>
-          </div>
-          <p>Des créations d&apos;exception pour sublimer chaque essence.</p>
-        </div>
-      </div>
-    );
+  if (slotKey === "home.ors.image" || slotKey === "home.univers.cercle" || slotKey === "cercle.image") {
+    return <div className="adm-slot-preview" data-variant="portrait"><img src={src} alt="Aperçu : tuile portrait" /></div>;
   }
-  if (slotKey === "home.banner.image") {
-    return <div className="adm-slot-preview" data-variant="banner"><img src={src} alt="Aperçu : bannière" /><div className="adm-slot-overlay"><strong>Illusion</strong><span>Notre best-seller</span></div></div>;
+  if (slotKey === "home.univers.ors") {
+    return <div className="adm-slot-preview" style={{ position: "relative", aspectRatio: "1 / 1", maxWidth: 300 }}><img src={src} alt="Aperçu : bloc Les Ors" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 30%", borderRadius: 18 }} /><div className="adm-slot-overlay"><span>Accessoires</span><strong style={{ fontSize: 22 }}>Les Ors</strong></div></div>;
   }
-  if (slotKey === "home.newsletter.image") {
-    return <div className="adm-slot-preview" data-variant="newsletter"><img src={src} alt="Aperçu : fond de la newsletter" /><div className="adm-slot-overlay"><span>Le cercle JAE</span><strong style={{ fontSize: 26 }}>Recevez nos histoires</strong></div></div>;
-  }
-  if (slotKey === "home.craft.image" || slotKey === "home.essence.image") {
-    return <div className="adm-slot-preview" data-variant="portrait"><img src={src} alt="Aperçu : image de section" /></div>;
+  if (slotKey.startsWith("ors.lookbook.")) {
+    const square = slotKey === "ors.lookbook.2" || slotKey === "ors.lookbook.5";
+    return <div className="adm-slot-preview" style={{ aspectRatio: square ? "1 / 1" : "1 / 2", maxWidth: square ? 220 : 160 }}><img src={src} alt="Aperçu : photo du lookbook" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 18 }} /></div>;
   }
   return <div className="adm-slot-preview" style={{ aspectRatio: "16 / 10" }}><img src={src} alt="Aperçu" /></div>;
   /* eslint-enable @next/next/no-img-element */

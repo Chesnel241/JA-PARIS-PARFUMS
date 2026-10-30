@@ -1,24 +1,22 @@
 import type { Product } from "@/lib/data";
-import { ProductCard, PRODUCT_CARD_SIZES } from "@/components/product-card";
-import { Stagger, StaggerItem } from "@/components/motion";
+import { ProductCard } from "@/components/product-card";
 
-/** Grille produits responsive (2 colonnes mobile, 3 à 4 desktop) à apparition échelonnée. */
-export function ProductGrid({ products, className = "", headingLevel = "h3", label, priorityCount = 0 }: {
+/** Grille de cartes (3 colonnes, ou 4 avec `dense`) à apparition échelonnée. */
+export function ProductGrid({ products, dense = false, headingLevel = "h3", label, priorityCount = 0 }: {
   products: Product[];
-  className?: string;
+  dense?: boolean;
   headingLevel?: "h2" | "h3";
   label?: string;
   priorityCount?: number;
 }) {
-  const dense = products.length >= 4;
-  const sizes = dense ? PRODUCT_CARD_SIZES : "(min-width: 900px) 33vw, 50vw";
+  const sizes = dense ? "(min-width: 1100px) 25vw, (min-width: 760px) 50vw, 100vw" : "(min-width: 760px) 33vw, 100vw";
   return (
-    <Stagger as="ul" label={label} className={`product-grid${dense ? " is-dense" : ""} ${className}`.trim()}>
+    <ul className={`cards${dense ? " c4" : ""}`} aria-label={label} data-stagger="" style={{ "--stagger": "0.08s" } as React.CSSProperties}>
       {products.map((product, index) => (
-        <StaggerItem as="li" key={product.slug}>
+        <li key={product.slug} data-animate="">
           <ProductCard product={product} sizes={sizes} headingLevel={headingLevel} priority={index < priorityCount} />
-        </StaggerItem>
+        </li>
       ))}
-    </Stagger>
+    </ul>
   );
 }

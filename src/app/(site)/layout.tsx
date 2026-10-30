@@ -1,8 +1,6 @@
 import { SiteChrome } from "@/components/site/site-chrome";
-import "@/styles/site.css";
+import "@/styles/maison.css";
 import "@/styles/commerce.css";
-import "@/styles/experience.css";
-import "@/styles/home.css";
 
 export default function SiteLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <SiteChrome>{children}</SiteChrome>;

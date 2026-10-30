@@ -1,13 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { X } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import type { CartItem } from "@/lib/cart";
 import { maxQuantityForStock } from "@/components/commerce/cart-rules";
 import { QuantityStepper } from "@/components/commerce/quantity-stepper";
-import { isUnoptimizedImage, isVectorImage, safeImageSrc } from "@/components/commerce/media";
+import { ProductThumb } from "@/components/commerce/product-thumb";
 
 // Ligne de panier partagée par le tiroir et la page panier.
 export function CartLine({
@@ -25,7 +23,6 @@ export function CartLine({
   size?: "sm" | "md";
   priority?: boolean;
 }) {
-  const src = safeImageSrc(item.image);
   const max = maxQuantityForStock(item.stock);
   const href = `/produit/${encodeURIComponent(item.slug)}`;
   const lowStock = item.stock !== undefined && item.stock <= 3;
@@ -33,15 +30,7 @@ export function CartLine({
   return (
     <div className={`cm-line cm-line--${size}`}>
       <Link href={href} className="cm-line__media" onClick={onNavigate} tabIndex={-1} aria-hidden="true">
-        <Image
-          src={src}
-          alt=""
-          fill
-          priority={priority}
-          sizes={size === "sm" ? "96px" : "(max-width: 760px) 104px, 132px"}
-          unoptimized={isUnoptimizedImage(src)}
-          className={isVectorImage(src) ? "is-contained" : "is-cover"}
-        />
+        <ProductThumb slug={item.slug} name={item.name} image={item.image} sizes={size === "sm" ? "72px" : "96px"} priority={priority} />
       </Link>
       <div className="cm-line__body">
         <div className="cm-line__head">
@@ -65,11 +54,10 @@ export function CartLine({
             max={Math.max(1, max)}
             onChange={onQuantity}
             label={`Quantité pour ${item.name}, ${item.volume}`}
-            size={size}
+            size="sm"
           />
           <button type="button" className="cm-line__remove" onClick={onRemove} aria-label={`Retirer ${item.name}, ${item.volume} du panier`}>
-            <X aria-hidden="true" />
-            <span>Retirer</span>
+            Retirer
           </button>
         </div>
         {item.quantity >= max ? (

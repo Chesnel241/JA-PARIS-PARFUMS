@@ -1,12 +1,12 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, LoaderCircle } from "lucide-react";
+import { ArrowIcon } from "@/components/maison/icons";
 
 type FieldName = "firstName" | "lastName" | "email" | "phone" | "instagram" | "city" | "message";
 type Values = Record<FieldName, string>;
-type Errors = Partial<Record<FieldName, string>>;
+type Errors = Partial<Record<FieldName | "adult", string>>;
 
 const EMPTY: Values = { firstName: "", lastName: "", email: "", phone: "", instagram: "", city: "", message: "" };
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -14,19 +14,20 @@ const MESSAGE_MIN = 20;
 const MESSAGE_MAX = 2000;
 
 // Messages en français par champ (les messages bruts du serveur ne sont pas affichés).
-const MESSAGES: Record<FieldName, string> = {
+const MESSAGES: Record<FieldName | "adult", string> = {
   firstName: "Indiquez votre prénom.",
   lastName: "Indiquez votre nom.",
-  email: "Saisissez une adresse e-mail valide.",
+  email: "Indiquez une adresse e-mail valide.",
   phone: "Numéro trop long (40 caractères maximum).",
-  instagram: "Compte Instagram trop long (80 caractères maximum).",
+  instagram: "Compte trop long (80 caractères maximum).",
   city: "Ville trop longue (80 caractères maximum).",
-  message: `Présentez-vous en ${MESSAGE_MIN} caractères minimum.`,
+  message: `Votre message doit faire au moins ${MESSAGE_MIN} caractères.`,
+  adult: "Cochez cette case pour continuer.",
 };
 
-const ORDER: FieldName[] = ["firstName", "lastName", "email", "phone", "instagram", "city", "message"];
+const ORDER: (FieldName | "adult")[] = ["firstName", "lastName", "email", "phone", "instagram", "city", "message", "adult"];
 
-function validate(values: Values): Errors {
+function validate(values: Values, adult: boolean): Errors {
   const errors: Errors = {};
   const firstName = values.firstName.trim();
   const lastName = values.lastName.trim();
@@ -38,19 +39,27 @@ function validate(values: Values): Errors {
   if (values.instagram.trim().length > 80) errors.instagram = MESSAGES.instagram;
   if (values.city.trim().length > 80) errors.city = MESSAGES.city;
   if (message.length < MESSAGE_MIN || message.length > MESSAGE_MAX) errors.message = message.length > MESSAGE_MAX ? `${MESSAGE_MAX} caractères maximum.` : MESSAGES.message;
+  if (!adult) errors.adult = MESSAGES.adult;
   return errors;
 }
 
+/** Candidature au Cercle JAE : POST /api/ambassador-applications, pot de miel. */
 export function AmbassadorForm() {
   const id = useId();
   const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
   const [values, setValues] = useState<Values>(EMPTY);
+  const [adult, setAdult] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "success">("idle");
+  const [sentName, setSentName] = useState("");
 
-  const fieldId = (name: FieldName) => `${id}-${name}`;
+  const fieldId = (name: FieldName | "adult") => `${id}-${name}`;
+
+  useEffect(() => {
+    if (status === "success") successRef.current?.focus();
+  }, [status]);
 
   function focusFirstError(next: Errors) {
     const first = ORDER.find((name) => next[name]);
@@ -66,10 +75,9 @@ export function AmbassadorForm() {
     event.preventDefault();
     if (status === "sending") return;
     setFormError("");
-    const next = validate(values);
+    const next = validate(values, adult);
     setErrors(next);
     if (Object.keys(next).length > 0) {
-      setFormError("Merci de corriger les champs indiqués.");
       focusFirstError(next);
       return;
     }
@@ -94,18 +102,18 @@ export function AmbassadorForm() {
         body: JSON.stringify(payload),
       });
       if (response.ok) {
+        setSentName(payload.firstName);
         setStatus("success");
         setValues(EMPTY);
-        window.setTimeout(() => successRef.current?.focus(), 50);
+        setAdult(false);
         return;
       }
       const data = (await response.json().catch(() => ({}))) as { error?: string; fields?: { fieldErrors?: Record<string, string[]> } };
       setStatus("idle");
       if (response.status === 422) {
         const serverErrors: Errors = {};
-        for (const name of ORDER) if (data.fields?.fieldErrors?.[name]?.length) serverErrors[name] = MESSAGES[name];
+        for (const name of ORDER) if (name !== "adult" && data.fields?.fieldErrors?.[name]?.length) serverErrors[name] = MESSAGES[name];
         setErrors(serverErrors);
-        setFormError("Merci de corriger les champs indiqués.");
         focusFirstError(serverErrors);
         return;
       }
@@ -118,24 +126,24 @@ export function AmbassadorForm() {
 
   if (status === "success") {
     return (
-      <div className="form-success" role="status" aria-live="polite">
-        <span className="form-success-icon" aria-hidden><Check size={22} /></span>
-        <h3 ref={successRef} tabIndex={-1}>Merci, votre candidature est envoyée.</h3>
-        <p>Nous revenons vers vous par e-mail très prochainement.</p>
-        <button type="button" className="text-link" onClick={() => setStatus("idle")}>Envoyer une autre candidature</button>
+      <div className="cercle-form cercle-ok" role="status" aria-live="polite">
+        <span className="tag"><span className="dot" />Candidature envoyée</span>
+        <h2 className="h-md" ref={successRef} tabIndex={-1}>Merci {sentName}, bienvenue près du Cercle.</h2>
+        <p className="muted">Nous étudions chaque profil avec attention et vous répondons par e-mail.</p>
+        <div className="btn-row">
+          <Link className="btn" href="/boutique">Découvrir les parfums<span className="ico"><ArrowIcon /></span></Link>
+          <button type="button" className="btn btn-line" onClick={() => setStatus("idle")}>Envoyer une autre candidature</button>
+        </div>
       </div>
     );
   }
 
-  const field = (name: FieldName, label: string, options: { type?: string; autoComplete?: string; required?: boolean; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; placeholder?: string; wide?: boolean } = {}) => {
+  const field = (name: FieldName, label: string, options: { type?: string; autoComplete?: string; required?: boolean; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]; placeholder?: string; maxLength?: number } = {}) => {
     const error = errors[name];
     const errorId = `${fieldId(name)}-error`;
     return (
-      <div className={`form-field${options.wide ? " is-wide" : ""}`} data-invalid={error ? "" : undefined}>
-        <label htmlFor={fieldId(name)}>
-          {label}
-          {options.required ? <span aria-hidden> *</span> : <span className="form-optional"> (facultatif)</span>}
-        </label>
+      <div className={`field${error ? " invalid" : ""}`}>
+        <label htmlFor={fieldId(name)}>{label}{options.required ? <span aria-hidden="true"> *</span> : null}</label>
         <input
           id={fieldId(name)}
           name={name}
@@ -143,14 +151,14 @@ export function AmbassadorForm() {
           autoComplete={options.autoComplete}
           inputMode={options.inputMode}
           placeholder={options.placeholder}
+          maxLength={options.maxLength}
           required={options.required}
-          aria-required={options.required || undefined}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? errorId : undefined}
           value={values[name]}
           onChange={(event) => update(name, event.target.value)}
         />
-        {error ? <p id={errorId} className="form-error">{error}</p> : null}
+        {error ? <span id={errorId} className="err">{error}</span> : null}
       </div>
     );
   };
@@ -159,45 +167,58 @@ export function AmbassadorForm() {
   const messageError = errors.message;
 
   return (
-    <form ref={formRef} className="ambassador-form" onSubmit={onSubmit} noValidate aria-describedby={`${id}-required`}>
-      <p id={`${id}-required`} className="form-hint">Les champs marqués d’un * sont obligatoires.</p>
+    <form ref={formRef} className="cercle-form" onSubmit={onSubmit} noValidate aria-labelledby={`${id}-title`}>
+      <h2 className="h-md" id={`${id}-title`}>Proposer ma candidature</h2>
+      <p className="muted small">Les champs suivis d’un astérisque sont obligatoires.</p>
       <div className="form-grid">
-        {field("firstName", "Prénom", { autoComplete: "given-name", required: true })}
-        {field("lastName", "Nom", { autoComplete: "family-name", required: true })}
-        {field("email", "E-mail", { type: "email", autoComplete: "email", inputMode: "email", required: true })}
-        {field("phone", "Téléphone", { type: "tel", autoComplete: "tel", inputMode: "tel" })}
-        {field("instagram", "Instagram", { placeholder: "@votrecompte" })}
-        {field("city", "Ville", { autoComplete: "address-level2" })}
-        <div className="form-field is-wide" data-invalid={messageError ? "" : undefined}>
-          <label htmlFor={fieldId("message")}>Votre message<span aria-hidden> *</span></label>
+        {field("firstName", "Prénom", { autoComplete: "given-name", required: true, maxLength: 60 })}
+        {field("lastName", "Nom", { autoComplete: "family-name", required: true, maxLength: 60 })}
+        {field("email", "E-mail", { type: "email", autoComplete: "email", inputMode: "email", required: true, maxLength: 160 })}
+        {field("phone", "Téléphone", { type: "tel", autoComplete: "tel", inputMode: "tel", maxLength: 40 })}
+        {field("instagram", "Instagram ou TikTok", { placeholder: "@votrecompte", maxLength: 80 })}
+        {field("city", "Ville", { autoComplete: "address-level2", maxLength: 80 })}
+        <div className={`field full${messageError ? " invalid" : ""}`}>
+          <label htmlFor={fieldId("message")}>Votre message<span aria-hidden="true"> *</span></label>
           <textarea
             id={fieldId("message")}
             name="message"
             rows={5}
             required
-            aria-required
             maxLength={MESSAGE_MAX}
+            placeholder="Parlez-nous de vous et de votre lien avec la maison."
             aria-invalid={messageError ? true : undefined}
-            aria-describedby={`${fieldId("message")}-help${messageError ? ` ${fieldId("message")}-error` : ""}`}
+            aria-describedby={`${fieldId("message")}-count${messageError ? ` ${fieldId("message")}-error` : ""}`}
             value={values.message}
             onChange={(event) => update("message", event.target.value)}
           />
-          <p id={`${fieldId("message")}-help`} className="form-help">
-            Parlez-nous de vous et de votre lien avec la maison. <span className="form-counter">{messageLength < MESSAGE_MIN ? `${MESSAGE_MIN - messageLength} caractère${MESSAGE_MIN - messageLength > 1 ? "s" : ""} minimum restant${MESSAGE_MIN - messageLength > 1 ? "s" : ""}` : `${messageLength} / ${MESSAGE_MAX}`}</span>
-          </p>
-          {messageError ? <p id={`${fieldId("message")}-error`} className="form-error">{messageError}</p> : null}
+          <span className="count" id={`${fieldId("message")}-count`}>
+            {messageLength < MESSAGE_MIN ? `Encore ${MESSAGE_MIN - messageLength} caractère${MESSAGE_MIN - messageLength > 1 ? "s" : ""} minimum` : `${messageLength} caractères`}
+          </span>
+          {messageError ? <span id={`${fieldId("message")}-error`} className="err">{messageError}</span> : null}
         </div>
       </div>
       <div className="hp-field" aria-hidden="true">
         <label htmlFor={`${id}-website`}>Ne pas remplir ce champ</label>
         <input id={`${id}-website`} name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
-      <div className="form-status" role="alert" aria-live="assertive">{formError ? <p className="form-alert">{formError}</p> : null}</div>
-      <div className="form-actions">
-        <button className="primary-button" type="submit" disabled={status === "sending"}>
-          {status === "sending" ? <><LoaderCircle className="spin" aria-hidden /> Envoi…</> : <>Envoyer ma candidature <ArrowRight aria-hidden /></>}
+      <div className="form-end">
+        <label className="check" htmlFor={fieldId("adult")}>
+          <input
+            type="checkbox"
+            id={fieldId("adult")}
+            checked={adult}
+            aria-invalid={errors.adult ? true : undefined}
+            aria-describedby={errors.adult ? `${fieldId("adult")}-error` : undefined}
+            onChange={(event) => { setAdult(event.target.checked); if (errors.adult) setErrors((current) => ({ ...current, adult: undefined })); }}
+          />
+          <span>J’ai 18 ans ou plus, ou j’ai l’accord d’un parent pour candidater.</span>
+        </label>
+        {errors.adult ? <span className="form-err" id={`${fieldId("adult")}-error`}>{errors.adult}</span> : null}
+        <div role="alert" aria-live="assertive">{formError ? <p className="form-err">{formError}</p> : null}</div>
+        <button className="btn" type="submit" disabled={status === "sending"}>
+          {status === "sending" ? "Envoi…" : "Envoyer ma candidature"}<span className="ico" aria-hidden="true"><ArrowIcon /></span>
         </button>
-        <p className="form-legal">Vos données servent uniquement à étudier votre candidature. <Link href="/confidentialite">Confidentialité</Link></p>
+        <p className="form-note">Vos données servent uniquement à étudier votre candidature. <Link href="/confidentialite">Confidentialité</Link></p>
       </div>
     </form>
   );

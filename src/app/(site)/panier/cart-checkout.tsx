@@ -97,7 +97,7 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
   }, [router]);
 
   const summaryLines = useMemo(
-    () => items.map((item) => ({ key: `${item.slug}::${item.volume}`, name: item.name, volume: item.volume, quantity: item.quantity, price: item.price, image: item.image })),
+    () => items.map((item) => ({ key: `${item.slug}::${item.volume}`, slug: item.slug, name: item.name, volume: item.volume, quantity: item.quantity, price: item.price, image: item.image })),
     [items],
   );
 
@@ -147,12 +147,12 @@ export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
 
       {items.length === 0 ? (
         <motion.div className="cm-empty" {...fade}>
-          <p className="eyebrow">Votre panier</p>
-          <h1>Votre panier est <em>vide.</em></h1>
-          <p>Laissez-vous guider par nos parfums et nos accessoires, pensés à Paris.</p>
+          <span className="tag">Votre panier</span>
+          <h1>Votre panier attend <em>son heure.</em></h1>
+          <p>Laissez-vous guider par nos eaux de parfum et nos bijoux dorés, composés à Paris.</p>
           <div className="cm-empty__links">
             <Link className="primary-button" href="/boutique">Découvrir les parfums</Link>
-            <Link className="cm-button-ghost" href="/accessoires">Les accessoires</Link>
+            <Link className="cm-button-ghost" href="/trouver-mon-heure">Trouver mon heure</Link>
           </div>
           {lastOrder ? (
             <div className="cm-empty__pending">

@@ -41,6 +41,7 @@ export async function GET() {
     { loc: `${baseUrl}/`, lastmod: latest([catalogUpdate, journalUpdate].filter((date): date is Date => Boolean(date))), changefreq: "daily", priority: "1.0" },
     { loc: `${baseUrl}/boutique`, lastmod: perfumeUpdate, changefreq: "weekly", priority: "0.9" },
     { loc: `${baseUrl}/accessoires`, lastmod: accessoryUpdate, changefreq: "weekly", priority: "0.9" },
+    { loc: `${baseUrl}/trouver-mon-heure`, lastmod: perfumeUpdate, changefreq: "monthly", priority: "0.7" },
     { loc: `${baseUrl}/journal`, lastmod: journalUpdate, changefreq: "weekly", priority: "0.7" },
     { loc: `${baseUrl}/ambassadrices`, changefreq: "monthly", priority: "0.6" },
     { loc: `${baseUrl}/boutiques`, changefreq: "monthly", priority: "0.6" },

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { getPublicProducts } from "@/lib/catalog";
 import { ProductSearch } from "@/components/product-search";
+import { PageHead } from "@/components/site/page-head";
 
 export const metadata: Metadata = {
   title: "Recherche",
-  description: "Recherchez un parfum ou un accessoire JAE Paris par nom, note olfactive ou famille.",
+  description: "Recherchez une eau de parfum ou un bijou JAE Paris par nom, note olfactive, famille ou heure.",
   robots: { index: false, follow: true },
 };
 
@@ -17,12 +18,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const products = await getPublicProducts();
 
   return (
-    <div className="page-shell cm-search-page">
-      <header className="cm-search-head">
-        <p className="eyebrow">Recherche</p>
-        <h1>Trouver son <em>sillage.</em></h1>
-      </header>
+    <>
+      <PageHead tag="Recherche" compact title={<>Trouver son <span className="serif">sillage</span></>} lead="Un parfum, une note, une heure ou un bijou : tout ce que la maison compose." />
       <ProductSearch products={products} initialQuery={initialQuery} />
-    </div>
+    </>
   );
 }

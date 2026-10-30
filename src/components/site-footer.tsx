@@ -1,77 +1,50 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { Logo } from "@/components/maison/logo";
+import { CartOpenButton, ParisTime } from "@/components/site/footer-live";
 
-const columns = [
-  {
-    title: "Boutique",
-    links: [
-      { label: "Parfums", href: "/boutique" },
-      { label: "Accessoires", href: "/accessoires" },
-      { label: "Recherche", href: "/recherche" },
-      { label: "Panier", href: "/panier" },
-    ],
-  },
-  {
-    title: "La maison",
-    links: [
-      { label: "Ambassadrices", href: "/ambassadrices" },
-      { label: "Journal", href: "/journal" },
-      { label: "Boutiques", href: "/boutiques" },
-    ],
-  },
-  {
-    title: "Informations",
-    links: [
-      { label: "Conditions générales de vente", href: "/cgv" },
-      { label: "Mentions légales", href: "/mentions-legales" },
-      { label: "Confidentialité", href: "/confidentialite" },
-    ],
-  },
-];
-
-/**
- * Pied de page « rideau » : sur grand écran, il est révélé par-dessous quand le
- * contenu remonte (position sticky), et se clôt sur la signature JAE en très
- * grand, dans une matière dorée.
- */
-export function SiteFooter() {
+/** Pied de page : signature, trois colonnes, grand logotype et heure de Paris. */
+export function SiteFooter({ hasStores }: { hasStores: boolean }) {
   return (
-    <footer className="site-footer">
-      <div className="footer-inner">
-        <div className="section-shell footer-cta">
-          <div>
-            <p className="eyebrow">Programme ambassadrices</p>
-            <p className="footer-cta-title">Portez le sillage avec nous</p>
+    <footer className="pied">
+      <div className="wrap">
+        <div className="pied-cols">
+          <div className="pied-intro">
+            <Link className="logo" href="/" aria-label="JAE Paris, accueil"><Logo title={null} /></Link>
+            <p>Maison de parfum parisienne. Des eaux de parfum, une pour chaque heure du jour, et des bijoux dorés.</p>
           </div>
-          <Link className="primary-button light" href="/ambassadrices#candidature">
-            Proposer ma candidature <ArrowRight aria-hidden />
-          </Link>
-        </div>
-
-        <div className="section-shell footer-main">
-          <nav className="footer-nav" aria-label="Pied de page">
-            {columns.map((column) => (
-              <div key={column.title}>
-                <h2 className="footer-heading">{column.title}</h2>
-                <ul>
-                  {column.links.map((link) => (
-                    <li key={link.href}><Link href={link.href}>{link.label}</Link></li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <nav aria-labelledby="pied-boutique">
+            <h2 id="pied-boutique">Boutique</h2>
+            <ul>
+              <li><Link href="/boutique">Les parfums</Link></li>
+              <li><Link href="/accessoires">Les Ors</Link></li>
+              <li><Link href="/trouver-mon-heure">Trouver mon heure</Link></li>
+              <li><CartOpenButton /></li>
+            </ul>
           </nav>
-          <div className="footer-promise">
-            <p>Livraison offerte dès 50 €</p>
-            <p>Paiement sécurisé via Lydia</p>
-            <p>Composé à Paris</p>
-          </div>
+          <nav aria-labelledby="pied-maison">
+            <h2 id="pied-maison">La maison</h2>
+            <ul>
+              <li><Link href="/ambassadrices">Le Cercle JAE</Link></li>
+              <li><Link href="/journal">Le Journal</Link></li>
+              <li>{hasStores ? <Link href="/boutiques">Points de vente</Link> : <span>Points de vente bientôt annoncés</span>}</li>
+            </ul>
+          </nav>
+          <nav aria-labelledby="pied-infos">
+            <h2 id="pied-infos">Informations</h2>
+            <ul>
+              <li><Link href="/cgv#livraison">Livraison et retours</Link></li>
+              <li><Link href="/cgv">CGV</Link></li>
+              <li><Link href="/mentions-legales">Mentions légales</Link></li>
+              <li><Link href="/confidentialite">Confidentialité</Link></li>
+            </ul>
+          </nav>
         </div>
-
-        <div className="section-shell footer-bottom">
-          <Link className="wordmark footer-wordmark" href="/" aria-label="JAE Paris — accueil"><span>JAE</span><small>Paris</small></Link>
-          <p>© {new Date().getFullYear()} JAE Paris</p>
-          <Link href="/admin" prefetch={false} className="footer-staff">Espace maison</Link>
+        <div className="pied-mark" aria-hidden="true"><Logo title={null} /></div>
+        <div className="pied-bas">
+          <span>Composé à Paris</span>
+          <span>© {new Date().getFullYear()} JAE Paris</span>
+          <ParisTime />
+          <Link href="/admin" prefetch={false}>Espace maison</Link>
         </div>
       </div>
     </footer>

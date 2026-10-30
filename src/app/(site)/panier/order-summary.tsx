@@ -1,9 +1,8 @@
-import Image from "next/image";
 import { formatPrice } from "@/lib/data";
-import { isUnoptimizedImage, isVectorImage, safeImageSrc } from "@/components/commerce/media";
+import { ProductThumb } from "@/components/commerce/product-thumb";
 import { ShippingProgress } from "@/components/commerce/shipping-progress";
 
-type SummaryLine = { key: string; name: string; volume: string; quantity: number; price: number; image: string };
+type SummaryLine = { key: string; slug?: string; name: string; volume: string; quantity: number; price: number; image: string };
 
 // Récapitulatif des montants (et, en option, des articles en lecture seule).
 export function OrderSummary({
@@ -32,11 +31,10 @@ export function OrderSummary({
       {showLines && lines && lines.length > 0 ? (
         <ul className="cm-summary__lines" aria-label={`${count} article${count > 1 ? "s" : ""}`}>
           {lines.map((line) => {
-            const src = safeImageSrc(line.image);
             return (
               <li key={line.key}>
                 <span className="cm-summary__thumb">
-                  <Image src={src} alt="" fill sizes="56px" unoptimized={isUnoptimizedImage(src)} className={isVectorImage(src) ? "is-contained" : "is-cover"} />
+                  <span className="cm-summary__media"><ProductThumb slug={line.slug ?? ""} name={line.name} image={line.image} sizes="56px" /></span>
                   <span className="cm-summary__qty" aria-hidden="true">{line.quantity}</span>
                 </span>
                 <span className="cm-summary__name">

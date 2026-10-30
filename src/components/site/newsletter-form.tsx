@@ -2,13 +2,13 @@
 
 import { useId, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, LoaderCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 type Status = "idle" | "sending" | "success" | "error";
 
-/** Inscription newsletter : POST /api/newsletter, pot de miel, états annoncés. */
+/** Inscription à la Lettre : POST /api/newsletter, pot de miel, états annoncés. */
 export function NewsletterForm() {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +28,7 @@ export function NewsletterForm() {
     event.preventDefault();
     if (status === "sending") return;
     const value = email.trim();
-    if (!EMAIL_PATTERN.test(value)) return fail("Saisissez une adresse e-mail valide.", true);
+    if (!EMAIL_PATTERN.test(value)) return fail("Indiquez une adresse e-mail valide, par exemple prenom@exemple.fr.", true);
 
     const website = (event.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
     setStatus("sending");
@@ -42,11 +42,11 @@ export function NewsletterForm() {
       });
       if (response.ok) {
         setStatus("success");
-        setMessage("Merci, votre inscription est confirmée.");
+        setMessage("Merci, bienvenue dans la Lettre. Les nouvelles heures vous arriveront en premier.");
         setEmail("");
         return;
       }
-      if (response.status === 422) return fail("Saisissez une adresse e-mail valide.", true);
+      if (response.status === 422) return fail("Indiquez une adresse e-mail valide, par exemple prenom@exemple.fr.", true);
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       fail(data.error ?? "Inscription impossible pour le moment. Réessayez dans un instant.");
     } catch {
@@ -57,9 +57,9 @@ export function NewsletterForm() {
   const messageId = `${id}-message`;
 
   return (
-    <form className="newsletter-form" onSubmit={onSubmit} noValidate>
-      <label className="newsletter-label" htmlFor={`${id}-email`}>Adresse e-mail</label>
-      <div className="newsletter-row">
+    <form onSubmit={onSubmit} noValidate>
+      <label className="sr-only" htmlFor={`${id}-email`}>Votre e-mail</label>
+      <div className="pill-form" data-invalid={invalid ? "" : undefined}>
         <input
           ref={inputRef}
           id={`${id}-email`}
@@ -68,29 +68,43 @@ export function NewsletterForm() {
           inputMode="email"
           autoComplete="email"
           required
-          placeholder="vous@exemple.fr"
+          placeholder="Votre e-mail"
+          maxLength={160}
           value={email}
           onChange={(event) => { setEmail(event.target.value); if (invalid) setInvalid(false); }}
           aria-invalid={invalid || undefined}
           aria-describedby={messageId}
           disabled={status === "sending"}
         />
-        <button className="primary-button light" type="submit" disabled={status === "sending"}>
-          {status === "sending" ? <><LoaderCircle className="spin" aria-hidden /> Envoi…</> : <>S’inscrire <ArrowRight aria-hidden /></>}
-        </button>
+        <button className="btn" type="submit" disabled={status === "sending"}>{status === "sending" ? "Envoi…" : "S’inscrire"}</button>
       </div>
       {/* Pot de miel : invisible et hors du parcours clavier. */}
       <div className="hp-field" aria-hidden="true">
         <label htmlFor={`${id}-website`}>Ne pas remplir ce champ</label>
         <input id={`${id}-website`} name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
-      <p id={messageId} className="newsletter-status" data-status={status} role="status" aria-live="polite">
-        {status === "success" ? <Check aria-hidden size={16} /> : null}
-        {message}
-      </p>
-      <p className="newsletter-legal">
-        Désinscription en un clic. <Link href="/confidentialite">Confidentialité</Link>
-      </p>
+      <div id={messageId} role="status" aria-live="polite">
+        {status === "success" ? <p className="form-ok">{message}</p> : status === "error" ? <p className="form-err">{message}</p> : null}
+      </div>
+      <p className="form-note">Vos données ne servent qu’à l’envoi de la lettre. Désinscription en un clic. <Link href="/confidentialite">Confidentialité</Link></p>
     </form>
+  );
+}
+
+/** Carte « La Lettre JAE », commune à toutes les pages (sauf le tunnel de commande). */
+export function LettreSlot() {
+  const pathname = usePathname();
+  if (pathname === "/panier") return null;
+  return (
+    <section className="wrap lettre" aria-labelledby="lettre-title">
+      <div className="lettre-card">
+        <div>
+          <span className="tag">La Lettre JAE</span>
+          <h2 className="h-lg" id="lettre-title">Les nouvelles heures, <span className="serif">avant tout le monde.</span></h2>
+          <p className="muted">Nouveautés, retours en stock et avant-premières. Désinscription en un clic.</p>
+        </div>
+        <NewsletterForm />
+      </div>
+    </section>
   );
 }

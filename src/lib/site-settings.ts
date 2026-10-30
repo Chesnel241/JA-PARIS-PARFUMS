@@ -3,12 +3,16 @@ import { prisma } from "@/lib/prisma";
 // Emplacements d'images du site modifiables depuis l'admin (/admin/apparence).
 // Chaque emplacement a une valeur par défaut : le site fonctionne sans réglage.
 export const IMAGE_SLOTS = [
-  { key: "home.hero.image", label: "Accueil — héro", description: "Grande image du haut de page (PNG détouré ou photo portrait).", defaultValue: "/hero-nobg.png" },
-  { key: "home.hero.card", label: "Accueil — tuile Parfums", description: "Image de la tuile d'entrée « Parfums » (portrait 4:5).", defaultValue: "/hero.jpg" },
-  { key: "home.banner.image", label: "Accueil — bannière signature", description: "Grande bannière au centre de l'accueil ; sert aussi d'image de partage.", defaultValue: "/bestseller.jpg" },
-  { key: "home.craft.image", label: "Accueil — tuile Accessoires", description: "Image de la tuile d'entrée « Accessoires » (portrait 4:5).", defaultValue: "/craft.jpg" },
-  { key: "home.essence.image", label: "Accueil — tuile Devenir ambassadrice", description: "Image de la tuile « Devenir ambassadrice » et du formulaire de candidature.", defaultValue: "/essence.jpg" },
-  { key: "home.newsletter.image", label: "Accueil — newsletter", description: "Image du bloc newsletter en bas de page.", defaultValue: "/newsletter.jpg" },
+  { key: "home.campaign.image", label: "Accueil — photo de campagne", description: "Grande photo portrait en haut de l’accueil (format 4:5). Sert aussi d’image de partage sur les réseaux.", defaultValue: "/maison/illusion-cou.jpg" },
+  { key: "home.ors.image", label: "Accueil — tuile Les Ors", description: "Petite tuile des bijoux, en haut de l’accueil (portrait).", defaultValue: "/maison/ors-flamme.jpg" },
+  { key: "home.univers.ors", label: "Accueil — bloc Les Ors", description: "Grand bloc des bijoux dans « L’univers JAE » (portrait).", defaultValue: "/maison/ors-eventail.jpg" },
+  { key: "home.univers.cercle", label: "Accueil — bloc Le Cercle", description: "Portrait du bloc ambassadeurs de l’accueil (portrait).", defaultValue: "/maison/cercle-portrait.jpg" },
+  { key: "ors.lookbook.1", label: "Les Ors — lookbook 1", description: "Grande photo verticale (colonne 1) de la campagne Les Ors.", defaultValue: "/maison/ors-flamme.jpg" },
+  { key: "ors.lookbook.2", label: "Les Ors — lookbook 2", description: "Photo carrée (colonne 2, en haut).", defaultValue: "/maison/ors-triangle.jpg" },
+  { key: "ors.lookbook.3", label: "Les Ors — lookbook 3", description: "Grande photo verticale (colonne 3).", defaultValue: "/maison/ors-eventail.jpg" },
+  { key: "ors.lookbook.4", label: "Les Ors — lookbook 4", description: "Grande photo verticale (colonne 4).", defaultValue: "/maison/ors-vague.jpg" },
+  { key: "ors.lookbook.5", label: "Les Ors — lookbook 5", description: "Photo carrée (colonne 2, en bas).", defaultValue: "/maison/ors-goutte.jpg" },
+  { key: "cercle.image", label: "Le Cercle — portrait", description: "Portrait de la page du programme ambassadeurs.", defaultValue: "/maison/cercle-portrait.jpg" },
 ] as const;
 
 export type ImageSlotKey = (typeof IMAGE_SLOTS)[number]["key"];

@@ -2,67 +2,76 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@/lib/data";
 import { formatPrice } from "@/lib/data";
-import { imageFit, isApiMedia } from "@/components/site/media";
+import { listFr } from "@/lib/heures";
+import { buyVariant, hourLabel, shownVariant } from "@/lib/maison";
+import { isUnoptimizedImage } from "@/components/commerce/media";
+import { Scene, photosOf } from "@/components/maison/scene";
+import { QuickAdd } from "@/components/site/quick-add";
 
-export const PRODUCT_CARD_SIZES = "(min-width: 1200px) 25vw, (min-width: 900px) 33vw, 50vw";
+export const PRODUCT_CARD_SIZES = "(min-width: 1100px) 25vw, (min-width: 760px) 50vw, 100vw";
+
+/** Ligne descriptive d'une carte : trois notes pour un parfum, l'accroche pour un bijou. */
+export function cardMeta(product: Product) {
+  if (product.category === "ACCESSOIRE") return product.tagline || "Bijou en laiton doré";
+  const notes = [...product.notes.top.slice(0, 2), ...product.notes.base.slice(0, 1)];
+  return notes.length ? capitalizeFirst(listFr(notes)) : product.family || "Eau de parfum";
+}
+
+function capitalizeFirst(value: string) {
+  return value.charAt(0).toLocaleUpperCase("fr-FR") + value.slice(1);
+}
 
 /**
- * Carte produit « image d'abord ». Composant serveur (aucun JS client) :
- * survol et fondu de la seconde image sont gérés en CSS.
+ * Carte produit : visuel arrondi (photo, ou flacon illustré), pastilles
+ * d'heure et de disponibilité, nom en italique, prix et ajout rapide.
+ * Composant serveur ; seul le bouton « + » est un îlot client.
  */
 export function ProductCard({ product, sizes = PRODUCT_CARD_SIZES, headingLevel = "h3", priority = false }: {
   product: Product;
-  /** Conservé pour compatibilité : l'échelonnement est géré par la grille. */
-  index?: number;
   sizes?: string;
   headingLevel?: "h2" | "h3";
   priority?: boolean;
 }) {
-  const prices = product.variants.map((variant) => variant.price);
-  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-  const hasRange = new Set(prices).size > 1;
-  const soldOut = product.variants.reduce((sum, variant) => sum + variant.stock, 0) <= 0;
-  const primary = product.images[0] ?? product.image;
-  const secondary = product.images[1];
   const Heading = headingLevel;
-  const volumes = product.category === "PARFUM" ? product.variants.map((variant) => variant.volume).join(" · ") : null;
+  const href = `/produit/${product.slug}`;
+  const shown = shownVariant(product);
+  const buy = buyVariant(product);
+  const hover = photosOf(product)[1];
+  const isAccessory = product.category === "ACCESSOIRE";
+  const label = isAccessory ? "Les Ors" : hourLabel(product);
 
   return (
-    <article className="product-card" data-sold-out={soldOut ? "" : undefined}>
-      <Link href={`/produit/${product.slug}`} className="product-card-link">
-        <div className="product-card-media" data-has-alt={secondary ? "" : undefined}>
-          <Image
-            src={primary}
-            alt={product.name}
-            fill
-            sizes={sizes}
-            priority={priority}
-            unoptimized={isApiMedia(primary)}
-            className={`product-card-img fit-${imageFit(primary)}`}
-          />
-          {secondary ? (
-            <Image
-              src={secondary}
-              alt=""
-              aria-hidden
-              fill
-              sizes={sizes}
-              unoptimized={isApiMedia(secondary)}
-              className={`product-card-img is-alt fit-${imageFit(secondary)}`}
-            />
-          ) : null}
-          {soldOut ? <span className="product-card-badge">Épuisé</span> : null}
-          <span className="product-card-cta" aria-hidden="true">{soldOut ? "Voir la création" : "Découvrir"}</span>
-        </div>
-        <div className="product-card-body">
-          <Heading className="product-card-title">{product.name}</Heading>
-          <p className="product-card-meta">{product.category === "PARFUM" ? "Eau de parfum" : "Laiton doré"}{volumes ? ` · ${volumes}` : ""}</p>
-          <p className="product-card-price">
-            {soldOut ? <span className="sr-only">Épuisé — </span> : null}
-            {hasRange ? "À partir de " : ""}{formatPrice(minPrice)}
-          </p>
-        </div>
+    <article className="pcard">
+      <Link className="pcard-vis" href={href} tabIndex={-1} aria-hidden="true">
+        <Scene subject={product} sizes={sizes} priority={priority} />
+        {hover ? (
+          <span className="alt">
+            <Image src={hover} alt="" fill sizes={sizes} unoptimized={isUnoptimizedImage(hover)} className="ph-fill" />
+          </span>
+        ) : null}
+        <span className="pcard-tags">
+          {label ? <span className="chip tab">{label}</span> : <span />}
+          {buy ? <span className="chip ok">Disponible</span> : <span className="chip wait">Bientôt de retour</span>}
+        </span>
       </Link>
+      <div className="pcard-row">
+        <div>
+          <Heading className="pcard-name"><Link href={href}>{product.name}</Link></Heading>
+          <p className="meta">{cardMeta(product)}</p>
+        </div>
+        {shown ? (
+          <div className="pcard-act">
+            <span className="price">
+              {!buy ? <span className="sr-only">Bientôt de retour, </span> : null}
+              {formatPrice(shown.price)}
+              {!isAccessory || product.variants.length > 1 ? <small>{shown.volume}</small> : null}
+            </span>
+            {buy ? (
+              <QuickAdd item={{ slug: product.slug, name: product.name, image: product.image, volume: buy.volume, price: buy.price, stock: buy.stock }} />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }

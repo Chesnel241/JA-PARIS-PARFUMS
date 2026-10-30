@@ -1,6 +1,6 @@
 import { SiteChrome } from "@/components/site/site-chrome";
 import { NotFoundView } from "@/components/site/status-views";
-import "@/styles/site.css";
+import "@/styles/maison.css";
 import "@/styles/commerce.css";
 
 export const metadata = { title: "Page introuvable", robots: { index: false } };

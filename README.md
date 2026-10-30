@@ -69,7 +69,11 @@ docker exec -it jae-paris-app npx tsx prisma/seed.ts
 
 ## Fonctionnalités
 
-- Accueil responsive et direction artistique JAE Paris
+- Direction artistique « Quelle heure êtes-vous ? » : chaque eau de parfum porte une heure de la journée ; l'heure de Paris désigne le parfum du moment (accueil, en-tête, menu, panier vide), réglette pour simuler une autre heure, frise « Les Heures » sur la collection
+- Couleurs des parfums par palettes fermées (soleil, poudre, grenat…) et flacon illustré automatique tant qu'un parfum n'a pas de photo
+- Quiz « Trouver mon heure » (4 questions) avec carte à partager
+- Fiche parfum : pyramide olfactive, évaporation des notes dans le temps, « M'avertir du retour » sur les contenances épuisées (alertes suivies dans l'admin, export CSV)
+- Les Ors (bijoux) avec lookbook administrable, Le Cercle (ambassadeurs), Journal, Lettre JAE
 - Catalogue, fiches produit et choix de contenance
 - Panier persistant dans le navigateur avec checkout multi-étapes
 - Recherche de produits par nom et notes olfactives

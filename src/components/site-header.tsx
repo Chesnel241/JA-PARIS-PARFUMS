@@ -1,57 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, Menu, Search, ShoppingBag, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCart } from "@/lib/cart";
-import { AnimatePresence, EASE_OUT, m, useReducedMotion } from "@/components/motion";
+import { deName, formatMinutes } from "@/lib/heures";
+import { buildSearchIndex, matchedNote, noteSuggestions, searchIndex } from "@/lib/search";
+import { AnimatePresence, m, useReducedMotion } from "@/components/motion";
+import { useModal } from "@/components/commerce/use-modal";
+import { Logo } from "@/components/maison/logo";
+import { BagIcon, CloseIcon, MenuIcon, SearchIcon } from "@/components/maison/icons";
+import { useMaison, useSlot } from "@/components/maison/maison-context";
 
 export const NAV_LINKS = [
   { label: "Parfums", href: "/boutique" },
-  { label: "Accessoires", href: "/accessoires" },
-  { label: "Ambassadrices", href: "/ambassadrices" },
+  { label: "Les Ors", href: "/accessoires" },
+  { label: "Le Cercle", href: "/ambassadrices" },
   { label: "Journal", href: "/journal" },
-  { label: "Boutiques", href: "/boutiques" },
 ] as const;
 
-const DESKTOP_QUERY = "(min-width: 1024px)";
+const EASE = [0.2, 0.8, 0.2, 1] as const;
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function Wordmark({ onClick }: { onClick?: () => void }) {
-  return (
-    <Link className="wordmark" href="/" aria-label="JAE Paris — accueil" onClick={onClick}>
-      <span>JAE</span>
-      <small>Paris</small>
-    </Link>
-  );
-}
-
-/** Pastille du panier : rendue après montage, « pulse » quand la quantité change. */
-function CartBadge({ count }: { count: number }) {
-  const previous = useRef(count);
-  const [pulse, setPulse] = useState(0);
-  useEffect(() => {
-    if (previous.current !== count) {
-      previous.current = count;
-      setPulse((value) => value + 1);
-    }
-  }, [count]);
-  return (
-    <m.span
-      key={pulse}
-      className="cart-badge"
-      aria-hidden
-      initial={pulse ? { scale: 1.7 } : false}
-      animate={{ scale: 1 }}
-      transition={{ type: "spring", stiffness: 520, damping: 16 }}
-    >
-      {count > 99 ? "99+" : count}
-    </m.span>
-  );
 }
 
 function cartLabel(mounted: boolean, count: number) {
@@ -59,100 +31,73 @@ function cartLabel(mounted: boolean, count: number) {
   return `Panier, ${count} article${count > 1 ? "s" : ""}`;
 }
 
+/** Phrase « Il est 19:04 à Paris, c'est l'heure d'Illusion. » (vide avant montage). */
+function useNowSentence() {
+  const { now } = useMaison();
+  const slot = useSlot();
+  if (now === null) return "";
+  const time = formatMinutes(now);
+  return slot ? `Il est ${time} à Paris, c’est l’heure ${deName(slot.item.name)}.` : `Il est ${time} à Paris.`;
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
   const { count, openDrawer } = useCart();
-  const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const { now } = useMaison();
+  const [layer, setLayer] = useState<"menu" | "search" | null>(null);
+  const [solid, setSolid] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const burgerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => setMounted(true), []);
 
-  // Opaque dès qu'on quitte le haut de page ; masqué en descendant, réaffiché en remontant.
   useEffect(() => {
-    let lastY = window.scrollY;
-    let ticking = false;
-    const update = () => {
-      const y = Math.max(0, window.scrollY);
-      setScrolled(y > 8);
-      if (Math.abs(y - lastY) > 6) {
-        setHidden(y > lastY && y > 180);
-        lastY = y;
-      }
-      ticking = false;
-    };
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        window.requestAnimationFrame(update);
-      }
-    };
-    update();
+    const onScroll = () => setSolid(window.scrollY > 10);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Fermeture à la navigation (y compris précédent / suivant) et au passage en desktop.
+  // Fermeture à la navigation (y compris précédent / suivant) et au passage en grand écran.
+  useEffect(() => setLayer(null), [pathname]);
   useEffect(() => {
-    setOpen(false);
-    setHidden(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const query = window.matchMedia(DESKTOP_QUERY);
-    const onChange = () => { if (query.matches) setOpen(false); };
+    const query = window.matchMedia("(min-width: 981px)");
+    const onChange = () => { if (query.matches) setLayer((current) => (current === "menu" ? null : current)); };
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
   }, []);
 
-  const closeMenu = useCallback(() => {
-    setOpen(false);
-    burgerRef.current?.focus();
-  }, []);
-
-  const state = open ? "menu" : scrolled ? "scrolled" : "solid";
+  const close = useCallback(() => setLayer(null), []);
+  const time = now === null ? "" : formatMinutes(now);
 
   return (
     <>
-      <header className="site-header" data-state={state} data-hidden={hidden && !open ? "" : undefined}>
-        <div className="site-header-inner">
-          <button
-            ref={burgerRef}
-            type="button"
-            className="header-icon menu-toggle"
-            aria-label="Ouvrir le menu"
-            aria-expanded={open}
-            aria-controls="menu-mobile"
-            onClick={() => setOpen(true)}
-          >
-            <Menu aria-hidden size={22} strokeWidth={1.5} />
-          </button>
-
-          <nav className="main-nav" aria-label="Navigation principale">
-            <ul>
-              {NAV_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined}>
-                    <span className="nav-roll"><span>{link.label}</span></span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+      <header className="site-head" data-solid={solid ? "" : undefined}>
+        <div className="annonce">
+          <p className="wrap"><span>Livraison offerte dès 50&nbsp;€</span><span>Expédition sous 2 à 3 jours</span><span>Retours sous 14 jours</span></p>
+        </div>
+        <div className="wrap nav">
+          <div className="nav-left">
+            <button type="button" className="icon-btn burger" aria-label="Ouvrir le menu" aria-expanded={layer === "menu"} aria-controls="menu-mobile" onClick={() => setLayer("menu")}>
+              <MenuIcon />
+            </button>
+            <Link className="logo" href="/" aria-label="JAE Paris, accueil"><Logo title={null} /></Link>
+          </div>
+          <nav className="nav-mid" aria-label="Navigation principale">
+            {NAV_LINKS.map((link) => (
+              <Link key={link.href} className="nav-link" href={link.href} aria-current={isActive(pathname, link.href) ? "page" : undefined}>{link.label}</Link>
+            ))}
           </nav>
-
-          <Wordmark />
-
-          <div className="header-actions">
-            <Link className="header-icon" href="/recherche" aria-label="Rechercher" aria-current={pathname === "/recherche" ? "page" : undefined}>
-              <Search aria-hidden size={20} strokeWidth={1.5} />
+          <div className="nav-right">
+            <Link className="pill-heure" href="/trouver-mon-heure" aria-label="Trouver mon heure" aria-current={pathname === "/trouver-mon-heure" ? "page" : undefined}>
+              <span className="dot" aria-hidden="true" />Trouver mon heure<span className="tab" aria-hidden="true">{time}</span>
             </Link>
+            <button type="button" className="icon-btn" aria-label="Rechercher" aria-haspopup="dialog" onClick={() => setLayer("search")}>
+              <SearchIcon />
+            </button>
             {/* Ouvre le tiroir panier ; reste un vrai lien vers /panier (nouvel onglet, sans JS, déjà sur /panier). */}
             <Link
-              className="header-icon bag-link"
+              className="icon-btn"
               href="/panier"
-              data-no-transition=""
               aria-haspopup="dialog"
               aria-label={cartLabel(mounted, count)}
               onClick={(event) => {
@@ -161,115 +106,160 @@ export function SiteHeader() {
                 openDrawer();
               }}
             >
-              <ShoppingBag aria-hidden size={20} strokeWidth={1.5} />
-              {mounted && count > 0 ? <CartBadge count={count} /> : null}
+              <BagIcon />
+              {mounted && count > 0 ? <span key={count} className="cart-count" aria-hidden="true">{count > 99 ? "99+" : count}</span> : null}
             </Link>
           </div>
         </div>
       </header>
 
-      <AnimatePresence>
-        {open ? <MobileMenu pathname={pathname} onClose={closeMenu} cartText={cartLabel(mounted, count)} /> : null}
-      </AnimatePresence>
+      {mounted
+        ? createPortal(
+            <div className="layer" data-modal-layer="">
+              <AnimatePresence>
+                {layer === "menu" ? <MobileMenu key="menu" pathname={pathname} onClose={close} /> : null}
+                {layer === "search" ? <SearchOverlay key="search" onClose={close} /> : null}
+              </AnimatePresence>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }
 
-/**
- * Menu mobile plein écran. Rendu hors du <header> : l'en-tête utilise
- * transform / backdrop-filter, qui confineraient un enfant position:fixed.
- */
-function MobileMenu({ pathname, onClose, cartText }: { pathname: string; onClose: () => void; cartText: string }) {
-  const panelRef = useRef<HTMLDivElement>(null);
+function MobileMenu({ pathname, onClose }: { pathname: string; onClose: () => void }) {
+  const ref = useModal<HTMLDivElement>(true, onClose);
   const reduce = useReducedMotion();
-
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
-    root.style.overflow = "hidden";
-
-    const focusables = () => Array.from(panel.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"));
-    focusables()[0]?.focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = focusables();
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      root.style.overflow = previousOverflow;
-    };
-  }, [onClose]);
-
-  const item = (index: number) => ({
-    initial: { opacity: 0, y: 16 },
-    animate: { opacity: 1, y: 0 },
-    transition: reduce ? { duration: 0 } : { duration: 0.5, delay: 0.12 + index * 0.04, ease: EASE_OUT },
-  });
+  const { schedule } = useMaison();
+  const sentence = useNowSentence();
+  const current = (href: string) => (isActive(pathname, href) ? "page" : undefined);
 
   return (
     <m.div
-      ref={panelRef}
+      ref={ref}
       id="menu-mobile"
-      className="mobile-menu"
+      className="menu-m"
       role="dialog"
       aria-modal="true"
       aria-label="Menu"
-      initial={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
-      animate={reduce ? { opacity: 1 } : { clipPath: "inset(0% 0% 0% 0%)" }}
-      exit={reduce ? { opacity: 0 } : { clipPath: "inset(0% 0% 100% 0%)" }}
-      transition={{ duration: reduce ? 0 : 0.45, ease: [0.76, 0, 0.24, 1] }}
-      data-lenis-prevent=""
+      tabIndex={-1}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: reduce ? 0 : 0.35, ease: EASE }}
     >
-      <div className="mobile-menu-bar">
-        <button type="button" className="header-icon" aria-label="Fermer le menu" onClick={onClose}>
-          <X aria-hidden size={22} strokeWidth={1.5} />
-        </button>
-        <Wordmark onClick={onClose} />
-        <Link className="header-icon" href="/panier" aria-label={cartText} onClick={onClose}>
-          <ShoppingBag aria-hidden size={20} strokeWidth={1.5} />
-        </Link>
+      <div className="wrap menu-m-head">
+        <Link className="logo" href="/" aria-label="JAE Paris, accueil" onClick={onClose}><Logo title={null} /></Link>
+        <button type="button" className="icon-btn" aria-label="Fermer le menu" onClick={onClose} data-autofocus=""><CloseIcon /></button>
       </div>
-
-      <nav className="mobile-menu-nav" aria-label="Menu principal">
+      <nav className="wrap" aria-label="Menu principal">
         <ul>
-          {NAV_LINKS.map((link, index) => (
-            <m.li key={link.href} {...item(index)}>
-              <Link href={link.href} onClick={onClose} aria-current={isActive(pathname, link.href) ? "page" : undefined}>
-                {link.label}
+          <li><Link href="/boutique" onClick={onClose} aria-current={current("/boutique")}>Parfums <small aria-hidden="true">Collection</small></Link></li>
+          {schedule.map(({ item }) => (
+            <li key={item.slug}>
+              <Link className="sub" href={`/produit/${item.slug}`} onClick={onClose} aria-current={current(`/produit/${item.slug}`)}>
+                {item.name} <small className="tab">{item.hour}</small>
               </Link>
-            </m.li>
+            </li>
           ))}
+          <li><Link href="/accessoires" onClick={onClose} aria-current={current("/accessoires")}>Les Ors <small aria-hidden="true">Accessoires</small></Link></li>
+          <li><Link href="/trouver-mon-heure" onClick={onClose} aria-current={current("/trouver-mon-heure")}>Trouver mon heure <small aria-hidden="true">Quiz</small></Link></li>
+          <li><Link href="/ambassadrices" onClick={onClose} aria-current={current("/ambassadrices")}>Le Cercle <small aria-hidden="true">Ambassadeurs</small></Link></li>
+          <li><Link href="/journal" onClick={onClose} aria-current={current("/journal")}>Le Journal</Link></li>
         </ul>
       </nav>
-
-      <m.div className="mobile-menu-foot" {...item(NAV_LINKS.length)}>
-        <Link className="primary-button block" href="/ambassadrices#candidature" onClick={onClose}>
-          Devenir ambassadrice <ArrowRight aria-hidden />
-        </Link>
-        <Link className="text-link" href="/recherche" onClick={onClose}>
-          <Search aria-hidden /> Rechercher
-        </Link>
-        <p>Livraison offerte dès 50 €</p>
-      </m.div>
+      <p className="wrap menu-m-now">{sentence}</p>
     </m.div>
+  );
+}
+
+function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const ref = useModal<HTMLDivElement>(true, onClose);
+  const reduce = useReducedMotion();
+  const router = useRouter();
+  const { items } = useMaison();
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const index = useMemo(() => buildSearchIndex(items), [items]);
+  const suggestions = useMemo(() => {
+    const notes = noteSuggestions(items, 5);
+    return items.some((item) => item.category === "ACCESSOIRE") ? [...notes, "bijou"] : notes;
+  }, [items]);
+  const trimmed = query.trim();
+  const results = useMemo(() => (trimmed ? searchIndex(index, trimmed) : index.filter((entry) => entry.slug).slice(0, 3)), [index, trimmed]);
+
+  return (
+    <>
+      <m.div className="voile" aria-hidden="true" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduce ? 0 : 0.3 }} />
+      <m.div
+        ref={ref}
+        className="recherche"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Recherche"
+        tabIndex={-1}
+        initial={reduce ? { opacity: 0 } : { y: "-102%" }}
+        animate={reduce ? { opacity: 1 } : { y: 0 }}
+        exit={reduce ? { opacity: 0 } : { y: "-102%" }}
+        transition={{ duration: reduce ? 0 : 0.55, ease: EASE }}
+      >
+        <div className="wrap rech-inner">
+          <form className="rech-bar" role="search" action="/recherche" onSubmit={(event) => {
+            event.preventDefault();
+            if (!trimmed) return;
+            router.push(`/recherche?q=${encodeURIComponent(trimmed)}`);
+            onClose();
+          }}>
+            <SearchIcon />
+            <label className="sr-only" htmlFor="search-overlay-input">Rechercher</label>
+            <input
+              ref={inputRef}
+              id="search-overlay-input"
+              name="q"
+              type="search"
+              value={query}
+              maxLength={80}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Un parfum, une note, un bijou…"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-describedby="search-overlay-status"
+              data-autofocus=""
+            />
+            <button type="button" className="icon-btn" aria-label="Fermer la recherche" onClick={onClose}><CloseIcon /></button>
+          </form>
+          {suggestions.length > 0 ? (
+            <ul className="rech-sugg" aria-label="Suggestions">
+              <li aria-hidden="true">Essayez&nbsp;:</li>
+              {suggestions.map((value) => (
+                <li key={value}><button type="button" onClick={() => { setQuery(value); inputRef.current?.focus(); }}>{value}</button></li>
+              ))}
+            </ul>
+          ) : null}
+          <p id="search-overlay-status" className="sr-only" role="status" aria-live="polite">
+            {trimmed ? (results.length ? `${results.length} résultat${results.length > 1 ? "s" : ""}` : `Aucun résultat pour « ${trimmed} »`) : ""}
+          </p>
+          {results.length > 0 ? (
+            <ul className="rech-res">
+              {results.map((entry) => {
+                const note = trimmed ? matchedNote(entry, trimmed) : null;
+                return (
+                  <li key={entry.href}>
+                    <Link href={entry.href} onClick={onClose}>
+                      <strong>{entry.title}</strong>
+                      <span>{note ? `Contient ${note.toLocaleLowerCase("fr-FR")} · ` : ""}{entry.sub}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="rech-empty">Aucun résultat pour « {trimmed} ». Essayez une note comme {suggestions.slice(0, 3).join(", ") || "rose ou vanille"}.</p>
+          )}
+          {trimmed ? <Link className="lien rech-all" href={`/recherche?q=${encodeURIComponent(trimmed)}`} onClick={onClose}>Voir la page de résultats</Link> : null}
+        </div>
+      </m.div>
+    </>
   );
 }

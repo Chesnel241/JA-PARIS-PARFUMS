@@ -20,6 +20,7 @@ export const PUBLIC_PAGES = [
   { name: "article du journal", path: "/journal/[slug]" },
   { name: "ambassadrices", path: "/ambassadrices" },
   { name: "boutiques", path: "/boutiques" },
+  { name: "trouver mon heure", path: "/trouver-mon-heure" },
   { name: "connexion admin", path: "/connexion-admin" },
 ] as const;
 

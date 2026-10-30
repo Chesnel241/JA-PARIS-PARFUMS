@@ -3,14 +3,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCategory } from "@prisma/client";
-import { RotateCcw, ShieldCheck, Truck } from "lucide-react";
-import { AddToCart } from "@/components/add-to-cart";
-import { PURCHASE_END_ID } from "@/components/commerce/constants";
-import { ProductGallery } from "@/components/commerce/product-gallery";
-import { RelatedProducts } from "@/components/commerce/related-products";
-import { safeImageSrc } from "@/components/commerce/media";
 import { getPublicProduct, getPublicProducts } from "@/lib/catalog";
 import type { Product } from "@/lib/data";
+import { paletteOf } from "@/lib/heures";
+import { hourLabel, sortByDay } from "@/lib/maison";
+import { safeImageSrc } from "@/components/commerce/media";
+import { ArrowIcon } from "@/components/maison/icons";
+import { Accent } from "@/components/maison/maison-context";
+import { Notes3 } from "@/components/maison/notes";
+import { Evaporation } from "@/components/product/evaporation";
+import { ProductGallery } from "@/components/product/gallery";
+import { PurchaseBox } from "@/components/product/purchase-box";
+import { ProductGrid } from "@/components/site/product-grid";
+import { JsonLd } from "@/components/site/json-ld";
+import { getSiteUrl } from "@/components/site/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +25,8 @@ type PageProps = { params: Promise<{ slug: string }> };
 // Une seule requête par rendu, partagée entre generateMetadata et la page.
 const loadProduct = cache((slug: string) => getPublicProduct(slug));
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://jaeparis.com").replace(/\/+$/, "");
-
 function absoluteUrl(path: string) {
-  return /^https?:\/\//.test(path) ? path : `${SITE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  return /^https?:\/\//.test(path) ? path : `${getSiteUrl()}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 function shortDescription(text: string, max = 160) {
@@ -35,36 +39,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const product = await loadProduct(slug);
   if (!product) return { title: "Création introuvable", robots: { index: false, follow: true } };
 
-  const description = shortDescription(product.description || product.story);
-  const url = `/produit/${product.slug}`;
+  const description = shortDescription([product.tagline, product.description].filter(Boolean).join(" ") || product.story);
+  const url = absoluteUrl(`/produit/${product.slug}`);
   const images = product.images.map(safeImageSrc).slice(0, 4).map((image) => ({ url: absoluteUrl(image), alt: product.name }));
+  const title = product.hour ? `${product.name}, ${product.hour}` : product.name;
 
   return {
-    title: product.name,
+    title,
     description,
-    alternates: { canonical: absoluteUrl(url) },
-    openGraph: {
-      type: "website",
-      locale: "fr_FR",
-      siteName: "JAE Paris",
-      title: `${product.name} — JAE Paris`,
-      description,
-      url: absoluteUrl(url),
-      images,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${product.name} — JAE Paris`,
-      description,
-      images: images.map((image) => image.url),
-    },
+    alternates: { canonical: url },
+    openGraph: { type: "website", locale: "fr_FR", siteName: "JAE Paris", title: `${title} — JAE Paris`, description, url, images },
+    twitter: { card: "summary_large_image", title: `${title} — JAE Paris`, description, images: images.map((image) => image.url) },
   };
 }
 
 function productJsonLd(product: Product) {
   const url = absoluteUrl(`/produit/${product.slug}`);
-  const categoryLabel = product.category === ProductCategory.ACCESSOIRE ? "Accessoires" : "Parfums";
-  const categoryPath = product.category === ProductCategory.ACCESSOIRE ? "/accessoires" : "/boutique";
+  const isAccessory = product.category === ProductCategory.ACCESSOIRE;
+  const categoryLabel = isAccessory ? "Les Ors" : "Parfums";
+  const categoryPath = isAccessory ? "/accessoires" : "/boutique";
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -102,11 +95,12 @@ function productJsonLd(product: Product) {
   };
 }
 
-const NOTE_LEVELS = [
-  { key: "top", label: "Notes de tête" },
-  { key: "heart", label: "Notes de cœur" },
-  { key: "base", label: "Notes de fond" },
-] as const;
+/** Le récit, avec le nom du parfum en italique à sa première occurrence. */
+function StoryQuote({ story, name }: { story: string; name: string }) {
+  const index = story.indexOf(name);
+  if (index === -1) return <>{story}</>;
+  return <>{story.slice(0, index)}<span className="serif">{name}</span>{story.slice(index + name.length)}</>;
+}
 
 export default async function ProductPage({ params }: PageProps) {
   const { slug } = await params;
@@ -114,75 +108,90 @@ export default async function ProductPage({ params }: PageProps) {
   if (!product) notFound();
 
   const isAccessory = product.category === ProductCategory.ACCESSOIRE;
-  const hasNotes = !isAccessory && NOTE_LEVELS.some(({ key }) => product.notes[key].length > 0);
-  const sameCategory = (await getPublicProducts(product.category)).filter((entry) => entry.slug !== product.slug);
-  const related = sameCategory.length > 0
-    ? sameCategory.slice(0, 3)
-    : (await getPublicProducts()).filter((entry) => entry.slug !== product.slug).slice(0, 3);
-  const categoryLabel = isAccessory ? "Accessoires" : "Parfums";
+  const all = await getPublicProducts();
+  const otherPerfumes = sortByDay(all.filter((entry) => entry.category === ProductCategory.PARFUM && entry.slug !== product.slug));
+  const otherPieces = all.filter((entry) => entry.category === ProductCategory.ACCESSOIRE && entry.slug !== product.slug);
+  const others = (isAccessory ? [...otherPieces, ...otherPerfumes] : [...otherPerfumes, ...otherPieces]).slice(0, 3);
+  const hasAllNotes = !isAccessory && product.notes.top.length > 0 && product.notes.heart.length > 0 && product.notes.base.length > 0;
+  const label = hourLabel(product);
+  const categoryLabel = isAccessory ? "Les Ors" : "Parfums";
   const categoryHref = isAccessory ? "/accessoires" : "/boutique";
-  // « </script> » neutralisé dans le JSON-LD.
-  const jsonLd = JSON.stringify(productJsonLd(product)).replace(/</g, "\\u003c");
 
   return (
-    <div className="cm-pdp">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+    <>
+      <JsonLd data={productJsonLd(product)} />
+      <Accent color={isAccessory ? null : paletteOf(product.palette).accent} />
 
-      <nav className="cm-breadcrumb" aria-label="Fil d’Ariane">
-        <ol>
-          <li><Link href="/">Accueil</Link></li>
-          <li><Link href={categoryHref}>{categoryLabel}</Link></li>
-          <li aria-current="page">{product.name}</li>
-        </ol>
-      </nav>
+      <div className="wrap produit">
+        <ProductGallery subject={product} badge={label || undefined} />
 
-      <div className="cm-pdp__main">
-        <div className="cm-pdp__media">
-          <ProductGallery images={product.images} name={product.name} />
-        </div>
-
-        <div className="cm-pdp__info">
-          <div className="cm-pdp__sticky">
-            <p className="cm-pdp__kicker">{isAccessory ? "Accessoire" : "Parfum"} · JAE Paris</p>
-            <h1 className="cm-pdp__title">{product.name}</h1>
-            {product.subtitle ? <p className="cm-pdp__subtitle">{product.subtitle}</p> : null}
-            <AddToCart product={product} />
-            {product.description ? <p className="cm-pdp__description">{product.description}</p> : null}
-            <ul className="cm-assurances" aria-label="Nos engagements">
-              <li><Truck aria-hidden="true" /><span><strong>Livraison offerte dès 50 €</strong> Sinon 5,90 €</span></li>
-              <li><ShieldCheck aria-hidden="true" /><span><strong>Paiement sécurisé Lydia</strong> Après validation de la commande</span></li>
-              <li><RotateCcw aria-hidden="true" /><span><strong>Retours sous 14 jours</strong> Article intact, non ouvert</span></li>
-            </ul>
-          </div>
+        <div className="p-info">
+          <nav aria-label="Fil d’Ariane">
+            <ol className="crumbs">
+              <li><Link href="/">Accueil</Link></li>
+              <li><Link href={categoryHref}>{categoryLabel}</Link></li>
+              <li aria-current="page">{product.name}</li>
+            </ol>
+          </nav>
+          <span className="tag">{isAccessory ? "Les Ors · Laiton doré" : "Eau de parfum"}</span>
+          <h1 className="p-name">{product.name}</h1>
+          {product.tagline ? <p className="p-tag">{product.tagline}</p> : null}
+          <p className="p-desc">{product.description}</p>
+          {!isAccessory ? <Notes3 notes={product.notes} /> : null}
+          <PurchaseBox product={product} />
+          <ul className="perks">
+            <li>Livraison offerte dès 50&nbsp;€, sinon 5,90&nbsp;€</li>
+            <li>Expédition sous 2 à 3 jours</li>
+            <li>{isAccessory ? "Retours sous 14 jours pour tout article intact" : "Retours sous 14 jours si le flacon est intact et non ouvert"}</li>
+            <li>Paiement sécurisé via Lydia</li>
+            {product.family ? <li>{product.family}</li> : null}
+          </ul>
+          {isAccessory ? (
+            <details className="care">
+              <summary>Conseil d’entretien</summary>
+              <p>Vaporisez votre parfum, laissez-le sécher, puis mettez vos bijoux. Le laiton doré garde mieux son éclat loin de l’eau, du parfum et des crèmes.</p>
+            </details>
+          ) : null}
         </div>
       </div>
 
-      {product.story || hasNotes ? (
-        <section className={`cm-story${hasNotes ? "" : " is-single"}`} aria-labelledby="cm-story-title">
-          <div className="cm-story__text">
-            <p className="eyebrow">Le récit</p>
-            <h2 id="cm-story-title" data-animate="fade-up">{isAccessory ? <>Une pièce <em>à part.</em></> : <>L’histoire <em>d’un sillage.</em></>}</h2>
-            {product.story ? <p>{product.story}</p> : null}
-          </div>
-          {hasNotes ? (
-            <div className="cm-notes">
-              <h3>La signature olfactive</h3>
-              <dl>
-                {NOTE_LEVELS.filter(({ key }) => product.notes[key].length > 0).map(({ key, label }, index) => (
-                  <div className="cm-notes__row" key={key} data-animate="fade-up" style={{ "--d": index * 0.12 } as React.CSSProperties}>
-                    <span className="cm-notes__index" aria-hidden="true">0{index + 1}</span>
-                    <dt>{label}</dt>
-                    <dd>{product.notes[key].join(" · ")}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ) : null}
+      {product.story ? (
+        <section className="wrap p-story trait" aria-label="Le récit">
+          <span className="tag tab">{product.hour ? `L’histoire de ${product.hour}` : "Le récit"}</span>
+          <blockquote><StoryQuote story={product.story} name={product.name} /></blockquote>
         </section>
       ) : null}
 
-      <RelatedProducts products={related} />
-      <div id={PURCHASE_END_ID} aria-hidden="true" />
-    </div>
+      {hasAllNotes ? (
+        <section className="wrap evap trait" aria-labelledby="evap-title">
+          <div className="sec-head">
+            <div><span className="tag">Votre sillage dans le temps</span><h2 className="h-lg" id="evap-title">Ce qui reste de vous, <span className="serif">heure après heure.</span></h2></div>
+            <p className="lead">Un parfum évolue sur la peau. Faites glisser le temps pour voir les notes se révéler, puis s’effacer. Les durées sont indicatives et varient selon chaque peau.</p>
+          </div>
+          <Evaporation product={product} />
+        </section>
+      ) : null}
+
+      {!isAccessory ? (
+        <section className="wrap porter trait" aria-labelledby="porter-title">
+          <span className="tag" id="porter-title">Comment le porter</span>
+          <ul className="porter-grid">
+            <li><strong>Sur les points chauds</strong><span>Cou, arrière des oreilles, intérieur des poignets. La chaleur diffuse le parfum autour de vous.</span></li>
+            <li><strong>Sans frotter</strong><span>Frotter écrase les notes de tête. Vaporisez, puis laissez sécher.</span></li>
+            <li><strong>À l’heure qui vous ressemble</strong><span>{product.moment ? `${product.name} est pensé pour ${product.moment.toLocaleLowerCase("fr-FR")}, mais votre heure vous appartient.` : "Chaque parfum a son heure, mais la vôtre vous appartient."}</span></li>
+          </ul>
+        </section>
+      ) : null}
+
+      {others.length > 0 ? (
+        <section className="wrap autres trait" aria-labelledby="autres-title">
+          <div className="sec-head">
+            <h2 className="h-lg" id="autres-title">{isAccessory ? <>À porter <span className="serif">avec</span></> : <>Les autres <span className="serif">heures</span></>}</h2>
+            <Link className="lien" href="/boutique">Toute la collection <ArrowIcon /></Link>
+          </div>
+          <ProductGrid products={others} />
+        </section>
+      ) : null}
+    </>
   );
 }

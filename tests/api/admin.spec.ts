@@ -47,11 +47,31 @@ test.describe("Admin — produits", () => {
     }
   });
 
-  test("accessoire → visible sur /accessoires et pas sur /boutique", async ({ adminRequest, request }) => {
-    const product = await createProduct(adminRequest, productPayload({ category: "ACCESSOIRE", notesTop: [], notesHeart: [], notesBase: [] }));
+  // « Toute la maison » (page collection) présente aussi les bijoux : un accessoire est visible sur
+  // /accessoires (Les Ors) et sa fiche le rattache aux Ors ; il ne porte jamais d'heure.
+  test("accessoire → visible sur /accessoires, fiche « Les Ors », jamais d'heure ni de palette", async ({ adminRequest, request }) => {
+    const payload = { ...productPayload({ category: "ACCESSOIRE", notesTop: [], notesHeart: [], notesBase: [] }), hour: "08:00", hourFrom: "06:00", palette: "soleil", moment: "Matin" };
+    const product = await createProduct(adminRequest, payload);
     try {
       expect(await (await request.get("/accessoires")).text()).toContain(product.name);
-      expect(await (await request.get("/boutique")).text()).not.toContain(product.name);
+      const page = await request.get(`/produit/${product.slug}`);
+      await expectStatus(page, 200);
+      expect(await page.text()).toContain("Les Ors · Laiton doré");
+      const stored = (await (await adminRequest.get(`/api/admin/products/${product.id}`)).json()) as { product: Record<string, unknown> };
+      expect(stored.product).toMatchObject({ hour: null, hourFrom: null, palette: "", moment: "" });
+    } finally {
+      await removeProduct(adminRequest, product.id);
+    }
+  });
+
+  test("parfum : heure et palette enregistrées ; heure invalide ou palette inconnue → 422", async ({ adminRequest }) => {
+    const product = await createProduct(adminRequest, { ...productPayload(), hour: "19:00", hourFrom: "16:00", palette: "poudre", moment: "Entre chien et loup", tagline: "Une accroche.", family: "Floral" });
+    try {
+      const stored = (await (await adminRequest.get(`/api/admin/products/${product.id}`)).json()) as { product: Record<string, unknown> };
+      expect(stored.product).toMatchObject({ hour: "19:00", hourFrom: "16:00", palette: "poudre", moment: "Entre chien et loup", tagline: "Une accroche.", family: "Floral" });
+      for (const invalid of [{ hour: "25:00" }, { hour: "7h" }, { palette: "url(javascript:alert(1))" }, { hourFrom: "06:00", hour: "" }, { tagline: "deux\nlignes" }]) {
+        await expectStatus(await adminRequest.post("/api/admin/products", { data: { ...productPayload(), ...invalid } }), 422, JSON.stringify(invalid));
+      }
     } finally {
       await removeProduct(adminRequest, product.id);
     }
@@ -239,15 +259,15 @@ test.describe("Admin — médias et apparence", () => {
     await expectStatus(upload, 201);
     const { asset } = (await upload.json()) as { asset: { id: string; url: string } };
     try {
-      const saved = await adminRequest.put("/api/admin/settings", { data: { key: "home.hero.card", value: asset.url } });
+      const saved = await adminRequest.put("/api/admin/settings", { data: { key: "home.campaign.image", value: asset.url } });
       await expectStatus(saved, 200);
-      expect(((await saved.json()) as { images: Record<string, string> }).images["home.hero.card"]).toBe(asset.url);
+      expect(((await saved.json()) as { images: Record<string, string> }).images["home.campaign.image"]).toBe(asset.url);
       expect(await (await request.get("/")).text()).toContain(asset.url);
 
-      await expectStatus(await adminRequest.put("/api/admin/settings", { data: { key: "home.hero.card", value: "javascript:alert(1)" } }), 422);
+      await expectStatus(await adminRequest.put("/api/admin/settings", { data: { key: "home.campaign.image", value: "javascript:alert(1)" } }), 422);
       await expectStatus(await adminRequest.put("/api/admin/settings", { data: { key: "cle.inconnue", value: "/craft.jpg" } }), 422);
     } finally {
-      await adminRequest.put("/api/admin/settings", { data: { key: "home.hero.card", value: "" } });
+      await adminRequest.put("/api/admin/settings", { data: { key: "home.campaign.image", value: "" } });
       await adminRequest.delete(`/api/admin/media/${asset.id}`);
     }
     expect(await (await request.get("/")).text()).not.toContain(asset.url);

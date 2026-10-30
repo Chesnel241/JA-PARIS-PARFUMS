@@ -1,15 +1,16 @@
 import Link from "next/link";
+import { ArrowIcon } from "@/components/maison/icons";
 
 export default function ProductNotFound() {
   return (
-    <div className="page-shell cm-notfound">
-      <p className="eyebrow">Création introuvable</p>
-      <h1>Ce sillage s’est <em>évaporé.</em></h1>
-      <p>Cette création n’existe pas ou n’est plus disponible. Découvrez le reste de la collection.</p>
-      <div className="cm-notfound__links">
-        <Link className="primary-button" href="/boutique">Les parfums</Link>
-        <Link className="cm-button-ghost" href="/accessoires">Les accessoires</Link>
+    <section className="wrap statut" aria-labelledby="status-title">
+      <span className="tag">Création introuvable</span>
+      <h1 id="status-title" className="h-lg">Ce sillage s’est <span className="serif">évaporé.</span></h1>
+      <p className="lead">Cette création n’existe pas ou n’est plus disponible. Découvrez le reste de la collection.</p>
+      <div className="btn-row">
+        <Link className="btn" href="/boutique">Les parfums<span className="ico"><ArrowIcon /></span></Link>
+        <Link className="btn btn-line" href="/accessoires">Les Ors</Link>
       </div>
-    </div>
+    </section>
   );
 }

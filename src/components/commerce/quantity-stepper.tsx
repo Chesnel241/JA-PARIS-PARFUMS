@@ -1,7 +1,5 @@
 "use client";
 
-import { Minus, Plus } from "lucide-react";
-
 // Sélecteur de quantité accessible. Les boutons en limite utilisent
 // aria-disabled (et non disabled) pour ne pas faire perdre le focus clavier.
 export function QuantityStepper({
@@ -30,16 +28,16 @@ export function QuantityStepper({
         aria-disabled={!canDecrease}
         onClick={() => canDecrease && onChange(value - 1)}
       >
-        <Minus aria-hidden="true" />
+        <span aria-hidden="true">−</span>
       </button>
-      <span className="cm-qty__value">{value}</span>
+      <output className="cm-qty__value" aria-live="polite">{value}</output>
       <button
         type="button"
         aria-label="Augmenter la quantité"
         aria-disabled={!canIncrease}
         onClick={() => canIncrease && onChange(value + 1)}
       >
-        <Plus aria-hidden="true" />
+        <span aria-hidden="true">+</span>
       </button>
     </div>
   );

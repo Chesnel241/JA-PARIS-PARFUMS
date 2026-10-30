@@ -60,7 +60,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section id="livraison">
         <h2>6. Livraison</h2>
         <ul>
           <li>Zone de livraison : <Todo>pays desservis</Todo>.</li>

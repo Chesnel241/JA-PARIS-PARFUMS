@@ -1,17 +1,16 @@
 import Image from "next/image";
-import { ArrowUpRight, Clock, MapPin, Phone } from "lucide-react";
+import Link from "next/link";
 import { getPublicStores } from "@/lib/community-service";
-import { Reveal } from "@/components/motion";
-import { PageIntro } from "@/components/site/page-intro";
-import { EmptyState } from "@/components/site/empty-state";
-import { isApiMedia } from "@/components/site/media";
+import { isUnoptimizedImage } from "@/components/commerce/media";
+import { ArrowIcon } from "@/components/maison/icons";
+import { PageHead } from "@/components/site/page-head";
 import { pageMetadata } from "@/components/site/seo";
 
 export const dynamic = "force-dynamic";
 
 export function generateMetadata() {
   return pageMetadata({
-    title: "Boutiques",
+    title: "Points de vente",
     description: "Retrouvez JAE Paris en boutique : adresses, horaires, téléphone et itinéraire.",
     path: "/boutiques",
   });
@@ -25,56 +24,42 @@ export default async function StoresPage() {
   const stores = await getPublicStores();
 
   return (
-    <div className="page-shell stores-page">
-      <PageIntro eyebrow="Points de vente" title="Nos boutiques" lede="Venez découvrir nos créations en personne." />
-      {stores.length === 0 ? (
-        <EmptyState
-          title="Nos adresses seront bientôt annoncées."
-          text="En attendant, toute la collection est disponible en ligne."
-          action={{ href: "/boutique", label: "Découvrir les parfums" }}
-        />
-      ) : (
-        <ul className="store-list">
-          {stores.map((store, index) => {
-            const locality = [store.city, store.country].filter(Boolean).join(", ");
-            return (
-              <li key={store.id}>
-                <Reveal as="article" className="store-card">
-                  <div className="store-card-media">
-                    <Image src={store.image} alt={`Boutique ${store.name}`} fill sizes="(min-width: 900px) 58vw, 100vw" priority={index === 0} unoptimized={isApiMedia(store.image)} />
-                  </div>
-                  <div className="store-card-body">
-                    <p className="eyebrow">{store.city}</p>
-                    <h2>{store.name}</h2>
-                    <dl className="store-details">
-                      <div>
-                        <dt><MapPin aria-hidden size={18} /><span className="sr-only">Adresse</span></dt>
-                        <dd><address>{store.address}<br />{locality}</address></dd>
-                      </div>
-                      <div>
-                        <dt><Clock aria-hidden size={18} /><span className="sr-only">Horaires</span></dt>
-                        <dd>{store.openingHours}</dd>
-                      </div>
-                      {store.phone ? (
-                        <div>
-                          <dt><Phone aria-hidden size={18} /><span className="sr-only">Téléphone</span></dt>
-                          <dd><a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a></dd>
-                        </div>
-                      ) : null}
-                    </dl>
-                    <div className="store-actions">
-                      <a className="primary-button" href={mapsUrl([store.address, store.city, store.country])} target="_blank" rel="noopener noreferrer">
-                        Itinéraire <ArrowUpRight aria-hidden />
-                        <span className="sr-only"> vers {store.name} (Google Maps, nouvel onglet)</span>
+    <>
+      <PageHead tag="Points de vente" title={<>Nos <span className="serif">adresses</span></>} lead="Venez sentir les heures en personne, et essayer Les Ors." />
+      <div className="wrap">
+        {stores.length === 0 ? (
+          <div className="vide" style={{ marginBottom: "clamp(40px, 6vw, 80px)" }}>
+            <p>Nos adresses seront bientôt annoncées.</p>
+            <p>En attendant, toute la collection est disponible en ligne, livrée sous 2 à 3 jours.</p>
+            <Link className="btn" href="/boutique">Découvrir les parfums<span className="ico"><ArrowIcon /></span></Link>
+          </div>
+        ) : (
+          <ul className="lieux">
+            {stores.map((store, index) => {
+              const locality = [store.city, store.country].filter(Boolean).join(", ");
+              return (
+                <li key={store.id} data-animate="">
+                  <article className="lieu">
+                    <div className="lieu-ph">
+                      <Image className="ph-fill" src={store.image} alt={`Boutique ${store.name}`} fill sizes="(min-width: 1100px) 25vw, 100vw" priority={index === 0} unoptimized={isUnoptimizedImage(store.image)} />
+                    </div>
+                    <div className="lieu-tx">
+                      <span className="small muted">{store.city}</span>
+                      <h2>{store.name}</h2>
+                      <address>{store.address}<br />{locality}</address>
+                      <p>{store.openingHours}</p>
+                      {store.phone ? <p><a href={`tel:${store.phone.replace(/[^\d+]/g, "")}`}>{store.phone}</a></p> : null}
+                      <a href={mapsUrl([store.address, store.city, store.country])} target="_blank" rel="noopener noreferrer">
+                        Itinéraire<span className="sr-only"> vers {store.name} (Google Maps, nouvel onglet)</span>
                       </a>
                     </div>
-                  </div>
-                </Reveal>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+                  </article>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </>
   );
 }

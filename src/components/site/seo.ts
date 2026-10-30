@@ -11,10 +11,10 @@ export function getSiteUrl() {
 /** Images du site, dédupliquées sur la durée d'une requête (métadonnées + rendu). */
 export const getCachedSiteImages = cache(getSiteImages);
 
-/** Image de partage par défaut : la bannière de l'accueil (photo, administrable). */
+/** Image de partage par défaut : la photo de campagne de l'accueil (administrable). */
 export async function getDefaultShareImage() {
   const images = await getCachedSiteImages();
-  return images["home.banner.image"];
+  return images["home.campaign.image"];
 }
 
 /**

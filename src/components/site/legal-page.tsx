@@ -7,14 +7,17 @@ export function Todo({ children = "À compléter" }: { children?: ReactNode }) {
 
 export function LegalPage({ title, updated, intro, children }: { title: string; updated: string; intro?: ReactNode; children: ReactNode }) {
   return (
-    <div className="page-shell legal-page">
-      <header className="page-intro compact">
-        <p className="eyebrow">Informations légales</p>
-        <h1>{title}</h1>
-        <p className="legal-updated">Dernière mise à jour : {updated}</p>
-        {intro ? <p className="page-lede">{intro}</p> : null}
+    <>
+      <header className="wrap page-head is-compact">
+        <div>
+          <span className="tag">Informations · mise à jour le {updated}</span>
+          <h1 className="h-xl">{title}</h1>
+        </div>
+        {intro ? <p className="lead">{intro}</p> : null}
       </header>
-      <div className="legal-body">{children}</div>
-    </div>
+      <div className="wrap">
+        <div className="legal legal-corps">{children}</div>
+      </div>
+    </>
   );
 }
