@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { LegalPage, Todo } from "@/components/site/legal-page";
 import { pageMetadata } from "@/components/site/seo";
-import { CHECKOUT_TTL_MINUTES, getPaymentProvider } from "@/lib/stripe";
+import { CHECKOUT_TTL_MINUTES } from "@/lib/stripe";
 
 export function generateMetadata() {
   return pageMetadata({
     title: "Conditions générales de vente",
-    description: `Conditions générales de vente JAE Paris : commande, paiement ${getPaymentProvider() === "stripe" ? "par carte bancaire" : "par Lydia"}, livraison offerte dès 50 €, rétractation sous 14 jours.`,
+    description: "Conditions générales de vente JAE Paris : commande, paiement par carte bancaire, livraison offerte dès 50 €, rétractation sous 14 jours.",
     path: "/cgv",
   });
 }
 
 export default function TermsPage() {
-  const card = getPaymentProvider() === "stripe";
   return (
     <LegalPage
       title="Conditions générales de vente"
@@ -48,28 +47,20 @@ export default function TermsPage() {
         <h2>4. Commande</h2>
         <p>
           Vous sélectionnez vos produits, vérifiez votre panier puis renseignez vos coordonnées de livraison. La commande est
-          enregistrée à la validation du formulaire, puis vous êtes redirigé vers {card ? "la page de paiement sécurisée" : "le lien de paiement"}. Elle devient ferme à
-          réception du paiement.{card ? ` Les articles vous sont réservés ${CHECKOUT_TTL_MINUTES} minutes : sans paiement dans ce délai, la commande est annulée automatiquement.` : ""}{" "}
-          JAE Paris se réserve le droit d’annuler une commande non réglée ou présentant une anomalie.
+          enregistrée à la validation du formulaire, puis vous êtes redirigé vers la page de paiement sécurisée. Elle devient ferme à
+          réception du paiement. Les articles vous sont réservés {CHECKOUT_TTL_MINUTES} minutes : sans paiement dans ce délai, la
+          commande est annulée automatiquement. JAE Paris se réserve le droit d’annuler une commande non réglée ou présentant une anomalie.
         </p>
       </section>
 
       <section>
         <h2>5. Paiement</h2>
-        {card ? (
-          <p>
-            Le paiement s’effectue en ligne <strong>par carte bancaire</strong>, sur la page de paiement sécurisée de notre
-            prestataire <strong>Stripe</strong> (authentification 3-D Secure le cas échéant). JAE Paris n’a jamais accès à vos
-            coordonnées bancaires. Le compte est débité à la validation du paiement ; la commande est préparée dès sa confirmation.
-            En cas d’annulation ou de rétractation, le remboursement est effectué sur la carte utilisée.
-          </p>
-        ) : (
-          <p>
-            Le paiement s’effectue en ligne via un lien de paiement <strong>Lydia</strong>, service sécurisé qui accepte
-            notamment la carte bancaire. JAE Paris n’a jamais accès à vos coordonnées bancaires. La commande est préparée
-            après confirmation du paiement.
-          </p>
-        )}
+        <p>
+          Le paiement s’effectue en ligne <strong>par carte bancaire</strong>, sur la page de paiement sécurisée de notre
+          prestataire <strong>Stripe</strong> (authentification 3-D Secure le cas échéant). JAE Paris n’a jamais accès à vos
+          coordonnées bancaires. Le compte est débité à la validation du paiement ; la commande est préparée dès sa confirmation.
+          En cas d’annulation ou de rétractation, le remboursement est effectué sur la carte utilisée.
+        </p>
       </section>
 
       <section id="livraison">

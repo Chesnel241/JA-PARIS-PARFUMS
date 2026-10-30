@@ -4,7 +4,6 @@ import { CartProvider } from "@/lib/cart";
 import { getPublicProducts } from "@/lib/catalog";
 import { getPublicStores } from "@/lib/community-service";
 import { toMaisonItem } from "@/lib/maison";
-import { getPaymentProvider } from "@/lib/stripe";
 import { MotionProvider } from "@/components/motion";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -33,7 +32,7 @@ export async function SiteChrome({ children }: { children: ReactNode }) {
   const items = products.map(toMaisonItem);
 
   return (
-    <MaisonProvider items={items} paymentProvider={getPaymentProvider()}>
+    <MaisonProvider items={items}>
       <CartProvider>
         <MotionProvider>
           <style dangerouslySetInnerHTML={{ __html: fontVariables }} />

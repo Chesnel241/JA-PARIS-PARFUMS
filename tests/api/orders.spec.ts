@@ -43,9 +43,11 @@ test.describe("API publique — commandes", () => {
       data: orderPayload([{ slug: product.slug, volume: "30 ml", quantity: 2, price: 1, name: "Nom falsifié" }]),
     });
     await expectStatus(response, 201);
-    const { order } = (await response.json()) as { order: CreatedOrder };
+    const { order, payment } = (await response.json()) as { order: CreatedOrder; payment: { method: string; amount: number } };
 
     expect(order.id).toBeTruthy();
+    expect(payment.method, "paiement par carte (Stripe) uniquement").toBe("stripe");
+    expect(payment.amount).toBe(order.totalAmount);
     expect(order.status).toBe("PENDING");
     expect(order.paymentStatus).toBe("UNPAID");
     expect(order.items).toHaveLength(1);

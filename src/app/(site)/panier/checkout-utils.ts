@@ -1,5 +1,4 @@
 import type { CartItem } from "@/lib/cart";
-import { computeShipping } from "@/lib/shipping";
 
 // ---------------------------------------------------------------------------
 // Formulaire de livraison : valeurs, validation client, erreurs de l'API.
@@ -189,14 +188,12 @@ export function parseApiFieldErrors(fields: unknown): FieldErrors {
 }
 
 // ---------------------------------------------------------------------------
-// Réponse de POST /api/orders → récapitulatif affiché à la confirmation.
+// Commande payée → récapitulatif affiché à la confirmation.
 // ---------------------------------------------------------------------------
 
 export type ConfirmedOrder = {
-  // « card » : payée par carte (Stripe) ; « lydia » : paiement à effectuer.
-  method: "card" | "lydia";
-  // Carte uniquement : paiement confirmé, ou différé en cours de validation.
-  paymentState?: "paid" | "processing";
+  // Paiement confirmé par Stripe, ou différé (virement…) en cours de validation.
+  paymentState: "paid" | "processing";
   reference: string;
   email: string;
   firstName: string;
@@ -209,54 +206,6 @@ export type ConfirmedOrder = {
 
 const asNumber = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.round(value) : undefined);
 const asString = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
-
-export function referenceFromId(id: string) {
-  return id.slice(-8).toUpperCase();
-}
-
-export function toConfirmedOrder(data: unknown, fallback: { fields: CheckoutFields; items: CartItem[] }): ConfirmedOrder {
-  const root = (data && typeof data === "object" ? data : {}) as Record<string, unknown>;
-  const order = (root.order && typeof root.order === "object" ? root.order : root) as Record<string, unknown>;
-  const pick = (key: string) => order[key] ?? root[key];
-
-  const id = asString(pick("id"));
-  const reference =
-    asString(pick("reference")) ??
-    asString(pick("orderNumber")) ??
-    (id ? referenceFromId(id) : "—");
-
-  const serverItems = Array.isArray(order.items) ? order.items : [];
-  const imageFor = (name: string, volume: string) =>
-    fallback.items.find((item) => item.name === name && item.volume === volume)?.image ?? fallback.items[0]?.image ?? "";
-  const items = serverItems.length > 0
-    ? serverItems.flatMap((raw) => {
-        if (!raw || typeof raw !== "object") return [];
-        const line = raw as Record<string, unknown>;
-        const name = asString(line.name) ?? "";
-        const volume = asString(line.volume) ?? "";
-        const quantity = asNumber(line.quantity) ?? 0;
-        const price = asNumber(line.price) ?? 0;
-        return name && quantity > 0 ? [{ name, volume, quantity, price, image: imageFor(name, volume) }] : [];
-      })
-    : fallback.items.map(({ name, volume, quantity, price, image }) => ({ name, volume, quantity, price, image }));
-
-  const itemsSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const subtotal = asNumber(pick("subtotal")) ?? asNumber(pick("subtotalAmount")) ?? itemsSubtotal;
-  const total = asNumber(pick("totalAmount")) ?? asNumber(pick("total")) ?? subtotal + computeShipping(subtotal);
-  const shipping = asNumber(pick("shippingAmount")) ?? asNumber(pick("shipping")) ?? Math.max(0, total - subtotal);
-
-  return {
-    method: "lydia",
-    reference,
-    email: asString(pick("email")) ?? fallback.fields.email.trim(),
-    firstName: fallback.fields.firstName.trim(),
-    subtotal,
-    shipping,
-    total,
-    items,
-    createdAt: asString(pick("createdAt")) ?? new Date().toISOString(),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Persistance de session (confirmation conservée au rechargement, brouillon).
@@ -293,9 +242,10 @@ export function loadLastOrder(): ConfirmedOrder | null {
   try {
     const data = JSON.parse(raw) as Partial<ConfirmedOrder>;
     if (typeof data.reference !== "string" || typeof data.total !== "number" || !Array.isArray(data.items)) return null;
+    // Les récapitulatifs d'avant le paiement par carte (sans état) sont ignorés.
+    if (data.paymentState !== "paid" && data.paymentState !== "processing") return null;
     return {
-      method: data.method === "card" ? "card" : "lydia",
-      paymentState: data.paymentState === "paid" || data.paymentState === "processing" ? data.paymentState : undefined,
+      paymentState: data.paymentState,
       reference: data.reference,
       email: typeof data.email === "string" ? data.email : "",
       firstName: typeof data.firstName === "string" ? data.firstName : "",
@@ -348,6 +298,18 @@ export type PendingCheckout = { sessionId: string; url: string; reference: strin
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
 
+// URL de paiement fournie par notre API : https uniquement (http accepté pour
+// la page Stripe simulée des tests, servie en local).
+export function isSafePaymentUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || (url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname));
+  } catch {
+    return false;
+  }
+}
+
 export function isCheckoutSessionId(value: unknown): value is string {
   return typeof value === "string" && SESSION_ID_PATTERN.test(value);
 }
@@ -365,7 +327,7 @@ export function loadPendingCheckout(): PendingCheckout | null {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<PendingCheckout>;
-    if (!isCheckoutSessionId(data.sessionId) || typeof data.url !== "string" || !data.url.startsWith("https://")) return null;
+    if (!isCheckoutSessionId(data.sessionId) || !isSafePaymentUrl(data.url)) return null;
     const expiresAt = typeof data.expiresAt === "string" ? Date.parse(data.expiresAt) : NaN;
     if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
       clearPendingCheckout();
@@ -373,7 +335,7 @@ export function loadPendingCheckout(): PendingCheckout | null {
     }
     return {
       sessionId: data.sessionId,
-      url: data.url,
+      url: data.url as string,
       reference: typeof data.reference === "string" ? data.reference : "",
       total: typeof data.total === "number" ? data.total : 0,
       expiresAt: data.expiresAt as string,
@@ -432,9 +394,8 @@ export function toCheckoutStatus(data: unknown, cartItems: CartItem[]): Checkout
 
   return {
     state,
-    paymentUrl: paymentUrl && paymentUrl.startsWith("https://") ? paymentUrl : null,
+    paymentUrl: isSafePaymentUrl(paymentUrl) ? paymentUrl : null,
     order: {
-      method: "card",
       paymentState: state === "paid" ? "paid" : "processing",
       reference,
       email: asString(order.email) ?? "",

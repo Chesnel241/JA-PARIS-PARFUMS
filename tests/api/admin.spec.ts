@@ -14,6 +14,7 @@ import {
   type CreatedOrder,
 } from "../helpers/factories";
 import { createJpeg, createPng } from "../helpers/images";
+import { payCheckout, type CardCheckout } from "../helpers/stripe";
 
 // Administration via l'API (session admin du projet setup), avec vérification
 // de la synchronisation côté site public (HTML rendu serveur).
@@ -114,12 +115,12 @@ test.describe("Admin — produits", () => {
 });
 
 test.describe("Admin — commandes", () => {
-  test("confirmer le paiement, changer le statut, annuler → stock restauré (idempotent)", async ({ adminRequest, request }) => {
+  test("carte : confirmation manuelle refusée, paiement Stripe, statut, annulation → remboursement + stock restauré (idempotent)", async ({ adminRequest, request }) => {
     const product = await createProduct(adminRequest, productPayload({ variants: [{ volume: "50 ml", price: 3000, stock: 10 }] }));
     try {
       const created = await request.post("/api/orders", { data: orderPayload([{ slug: product.slug, volume: "50 ml", quantity: 3 }]) });
       await expectStatus(created, 201);
-      const { order } = (await created.json()) as { order: CreatedOrder };
+      const { order, payment } = (await created.json()) as { order: CreatedOrder; payment: CardCheckout };
       expect(await variantStock(adminRequest, product.id, "50 ml")).toBe(7);
 
       const patch = async (data: object, status = 200) => {
@@ -128,10 +129,15 @@ test.describe("Admin — commandes", () => {
         return response.status() === 200 ? ((await response.json()) as { order: CreatedOrder }).order : undefined;
       };
 
-      const paid = await patch({ action: "confirm-payment" });
-      expect(paid?.paymentStatus).toBe("PAID");
-      expect(paid?.status).toBe("CONFIRMED");
-      expect(await variantStock(adminRequest, product.id, "50 ml"), "confirmer ne touche pas au stock").toBe(7);
+      // Seul Stripe atteste un paiement par carte.
+      await patch({ action: "confirm-payment" }, 409);
+      await patch({ action: "set-status", status: "SHIPPED" }, 409);
+      await payCheckout(request, payment.sessionId);
+      expect((await (await request.get(`/api/checkout/status?session_id=${payment.sessionId}`)).json()).state).toBe("paid");
+      const paid = ((await (await adminRequest.get(`/api/admin/orders/${order.id}`)).json()) as { order: CreatedOrder }).order;
+      expect(paid.paymentStatus).toBe("PAID");
+      expect(paid.status).toBe("CONFIRMED");
+      expect(await variantStock(adminRequest, product.id, "50 ml"), "le paiement ne touche pas au stock").toBe(7);
 
       expect((await patch({ action: "set-status", status: "SHIPPED" }))?.status).toBe("SHIPPED");
       await patch({ action: "set-status", status: "CANCELLED" }, 422);

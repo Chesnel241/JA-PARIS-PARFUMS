@@ -1,12 +1,11 @@
 import Stripe from "stripe";
 import { getSiteUrl } from "@/lib/env";
-import type { PaymentProvider } from "@/lib/payment";
 
 // Paiement par carte bancaire avec Stripe Checkout (page de paiement hébergée
 // par Stripe : aucune donnée bancaire ne transite par le site).
 //
-// - Activé dès que STRIPE_SECRET_KEY est définie ; sinon le site conserve le
-//   paiement Lydia (aucune régression tant que les clés ne sont pas posées).
+// - Seul moyen de paiement : sans STRIPE_SECRET_KEY, les commandes sont
+//   refusées (503) et rien n'est réservé.
 // - Montants TTC issus EXCLUSIVEMENT de la base (jamais du navigateur).
 // - Moyens de paiement dynamiques : réglés dans le Dashboard Stripe (on ne
 //   passe jamais `payment_method_types`).
@@ -34,10 +33,6 @@ export function isStripeEnabled() {
   return SECRET_KEY_PATTERN.test(stripeSecretKey());
 }
 
-export function getPaymentProvider(): PaymentProvider {
-  return isStripeEnabled() ? "stripe" : "lydia";
-}
-
 export function stripeWebhookSecret() {
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim() ?? "";
   return secret.startsWith("whsec_") ? secret : "";
@@ -54,6 +49,21 @@ function productTaxCode() {
   return code && TAX_CODE_PATTERN.test(code) ? code : undefined;
 }
 
+// Tests (CI, local) : API Stripe simulée (tests/helpers/stripe-mock.mjs).
+// Honoré UNIQUEMENT avec une clé de test : une clé live ne part jamais
+// ailleurs que vers api.stripe.com.
+function apiBaseOverride(key: string): { host: string; port: number; protocol: "http" | "https" } | Record<string, never> {
+  const base = process.env.STRIPE_API_BASE?.trim();
+  if (!base || !/^(sk|rk)_test_/.test(key)) return {};
+  try {
+    const url = new URL(base);
+    const protocol = url.protocol === "http:" ? "http" : "https";
+    return { host: url.hostname, port: Number(url.port) || (protocol === "http" ? 80 : 443), protocol };
+  } catch {
+    return {};
+  }
+}
+
 let cached: { key: string; client: Stripe } | null = null;
 
 // Client instancié à la demande : jamais pendant `next build` ni sans clé.
@@ -68,6 +78,7 @@ export function getStripe(): Stripe {
         maxNetworkRetries: 2,
         timeout: 15_000,
         appInfo: { name: "JAE Paris", url: "https://jaeparis.com" },
+        ...apiBaseOverride(key),
       }),
     };
   }

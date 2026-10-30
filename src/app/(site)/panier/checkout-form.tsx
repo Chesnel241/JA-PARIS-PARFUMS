@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, CircleAlert, CreditCard, LoaderCircle, Lock } from "lucide-react";
 import { formatPrice } from "@/lib/data";
 import type { CartItem } from "@/lib/cart";
-import type { PaymentProvider } from "@/lib/payment";
 import {
   COUNTRIES,
   EMPTY_FIELDS,
@@ -12,16 +11,15 @@ import {
   buildOrderPayload,
   cancelCheckout,
   clearPendingCheckout,
+  isSafePaymentUrl,
   loadDraft,
   loadPendingCheckout,
   parseApiFieldErrors,
   saveDraft,
   savePendingCheckout,
-  toConfirmedOrder,
   validateAll,
   validateField,
   type CheckoutFields,
-  type ConfirmedOrder,
   type FieldErrors,
   type FieldName,
 } from "./checkout-utils";
@@ -61,17 +59,12 @@ function formatWait(seconds: number) {
   return `${minutes} min`;
 }
 
-// URL de paiement renvoyée par notre API (Stripe Checkout) : https uniquement.
+// Page de paiement renvoyée par notre API (Stripe Checkout).
 function stripeRedirectUrl(data: unknown): { url: string; sessionId: string; expiresAt: string; reference: string; amount: number } | null {
   const payment = data && typeof data === "object" ? (data as { payment?: unknown }).payment : null;
   if (!payment || typeof payment !== "object") return null;
   const value = payment as Record<string, unknown>;
-  if (value.method !== "stripe" || typeof value.url !== "string" || typeof value.sessionId !== "string") return null;
-  try {
-    if (new URL(value.url).protocol !== "https:") return null;
-  } catch {
-    return null;
-  }
+  if (value.method !== "stripe" || !isSafePaymentUrl(value.url) || typeof value.sessionId !== "string") return null;
   return {
     url: value.url,
     sessionId: value.sessionId,
@@ -84,17 +77,12 @@ function stripeRedirectUrl(data: unknown): { url: string; sessionId: string; exp
 export function CheckoutForm({
   items,
   total,
-  paymentProvider,
-  onSuccess,
   onStockConflict,
 }: {
   items: CartItem[];
   total: number;
-  paymentProvider: PaymentProvider;
-  onSuccess: (order: ConfirmedOrder) => void;
   onStockConflict: () => void;
 }) {
-  const card = paymentProvider === "stripe";
   // Monté uniquement côté client (après chargement du panier) : lecture directe du brouillon.
   const [fields, setFields] = useState<CheckoutFields>(() => loadDraft() ?? EMPTY_FIELDS);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -228,7 +216,7 @@ export function CheckoutForm({
           window.location.assign(redirect.url);
           return;
         }
-        onSuccess(toConfirmedOrder(data, { fields, items }));
+        showFormError("Le paiement n’a pas pu être ouvert. Votre panier est conservé : réessayez dans un instant.");
         return;
       }
 
@@ -348,18 +336,11 @@ export function CheckoutForm({
       </fieldset>
 
       <div className="cm-form__payment">
-        {card ? <CreditCard aria-hidden="true" /> : <Lock aria-hidden="true" />}
-        {card ? (
-          <p>
-            <strong>Paiement par carte bancaire</strong>
-            Vous réglez ensuite sur la page de paiement sécurisée de Stripe (3-D Secure). Vos articles vous sont réservés pendant le paiement.
-          </p>
-        ) : (
-          <p>
-            <strong>Paiement via Lydia</strong>
-            Après validation, vous recevez une référence de commande à indiquer lors du paiement Lydia. Votre commande est réservée dès maintenant.
-          </p>
-        )}
+        <CreditCard aria-hidden="true" />
+        <p>
+          <strong>Paiement par carte bancaire</strong>
+          Vous réglez ensuite sur la page de paiement sécurisée de Stripe (3-D Secure). Vos articles vous sont réservés pendant le paiement.
+        </p>
       </div>
 
       <div ref={alertRef} className="cm-form__alert-slot" aria-live="assertive">
@@ -378,16 +359,13 @@ export function CheckoutForm({
           <><LoaderCircle className="spin" aria-hidden="true" size={18} /> Validation en cours…</>
         ) : waitSeconds > 0 ? (
           <>Réessayer dans {formatWait(waitSeconds)}</>
-        ) : card ? (
-          <><Lock aria-hidden="true" size={16} /> Payer par carte · {formatPrice(total)} <ArrowRight aria-hidden="true" size={16} /></>
         ) : (
-          <>Valider la commande · {formatPrice(total)} <ArrowRight aria-hidden="true" size={16} /></>
+          <><Lock aria-hidden="true" size={16} /> Payer par carte · {formatPrice(total)} <ArrowRight aria-hidden="true" size={16} /></>
         )}
       </button>
       <p className="cm-form__legal" id="cm-form-legal">
-        {card
-          ? "En continuant, vous confirmez votre commande et acceptez nos conditions générales de vente. Le montant est recalculé par nos soins au prix en vigueur, puis réglé sur la page Stripe."
-          : "En validant, vous confirmez votre commande. Le montant final est recalculé par nos soins au prix en vigueur."}
+        En continuant, vous confirmez votre commande et acceptez nos conditions générales de vente. Le montant est recalculé
+        par nos soins au prix en vigueur, puis réglé sur la page Stripe.
       </p>
     </form>
   );

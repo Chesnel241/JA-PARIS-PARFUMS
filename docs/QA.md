@@ -6,8 +6,15 @@ Filet de sécurité avant mise en production : tests **API** (HTTP pur, sans nav
 
 Prérequis : PostgreSQL migré et seedé, `.env` renseigné (voir `.env.example`), dépendances installées.
 
+Paiement : la suite n'appelle jamais Stripe. Elle utilise l'API Stripe simulée `tests/helpers/stripe-mock.mjs`
+(sessions Checkout, expiration, remboursements, page de paiement « Payer / Retour »). L'application testée doit
+tourner avec une clé de **test** factice, `STRIPE_API_BASE=http://127.0.0.1:12111` et un `STRIPE_WEBHOOK_SECRET`
+(`whsec_…`) connu aussi de Playwright (webhooks signés par les tests).
+
 ```bash
 npx prisma migrate deploy && npm run db:seed
+nohup npm run stripe:mock > stripe-mock.log 2>&1 &  # API Stripe simulée (port 12111)
+export STRIPE_SECRET_KEY=sk_test_localMock0123456789 STRIPE_WEBHOOK_SECRET=whsec_localMock0123456789 STRIPE_API_BASE=http://127.0.0.1:12111
 nohup npx next dev -p 3005 > dev.log 2>&1 &     # ou le serveur standalone (plus bas)
 npm run test:e2e                                  # toute la suite
 npx playwright test --project=api                 # API seulement (rapide, aucun navigateur)
@@ -42,7 +49,7 @@ cp -r .next/static "$SERVER_DIR/.next/static" && cp -r public "$SERVER_DIR/publi
 
 ## CI (`.github/workflows/ci.yml`)
 
-Sur `pull_request` et `push` vers `main` : service PostgreSQL 16, Node 20, `npm ci`, Chromium, `prisma migrate deploy`, seed, `typecheck`, `lint`, `build`, démarrage du serveur standalone sur `127.0.0.1:3005`, attente de disponibilité, `npm run test:e2e`. En cas d'échec, `playwright-report/`, `test-results/` (traces, captures) et `server.log` sont publiés en artefact. `retries: 1` en CI uniquement.
+Sur `pull_request` et `push` vers `main` : service PostgreSQL 16, Node 20, `npm ci`, Chromium, `prisma migrate deploy`, seed, `typecheck`, `lint`, `build`, démarrage de l'API Stripe simulée (port 12111) puis du serveur standalone sur `127.0.0.1:3005`, attente de disponibilité, `npm run test:e2e`. En cas d'échec, `playwright-report/`, `test-results/` (traces, captures), `server.log` et `stripe-mock.log` sont publiés en artefact. `retries: 1` en CI uniquement.
 
 ## Structure
 
@@ -58,8 +65,10 @@ tests/
     admin-api.ts            lectures d'état via /api/admin (candidatures, newsletter, upload)
     images.ts               PNG/JPEG générés en mémoire, SVG malveillant, faux PNG, > 4 Mo
     pages.ts                LISTE CENTRALE des pages publiques + découverte des routes/pages dans src/app
-    browser.ts              défilement, images chargées, débordement horizontal, stub Lydia
-  api/                      commandes, communauté, public/SEO, sécurité, administration
+    browser.ts              défilement, images chargées, débordement horizontal
+    stripe-mock.mjs         API Stripe simulée (sessions, expiration, remboursements, page « Payer / Retour »)
+    stripe.ts               paiement simulé, webhooks signés avec STRIPE_WEBHOOK_SECRET
+  api/                      commandes, paiement par carte, communauté, public/SEO, sécurité, administration
   e2e/                      qualité par page, vitrine, parcours d'achat, formulaires, back-office
 ```
 

@@ -116,7 +116,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                 </>
               ) : (
                 <>
-                  <div><dt>Moyen</dt><dd>Lien de paiement Lydia (confirmation manuelle)</dd></div>
+                  <div><dt>Moyen</dt><dd>Lien de paiement Lydia (ancienne commande, confirmation manuelle)</dd></div>
                   <div><dt>Référence à rechercher sur Lydia</dt><dd><span className="adm-code">{reference}</span> · {formatEuros(order.totalAmount)}</dd></div>
                 </>
               )}

@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getPublicProducts } from "@/lib/catalog";
 import type { CatalogSnapshot } from "@/lib/cart";
-import { getPaymentProvider } from "@/lib/stripe";
 import { CartCheckout } from "./cart-checkout";
 
 export const metadata: Metadata = {
@@ -25,7 +24,7 @@ export default async function CartPage() {
 
   return (
     <Suspense fallback={<div className="page-shell cm-cart-page" aria-busy="true" />}>
-      <CartCheckout catalog={catalog} paymentProvider={getPaymentProvider()} />
+      <CartCheckout catalog={catalog} />
     </Suspense>
   );
 }

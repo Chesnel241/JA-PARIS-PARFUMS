@@ -30,7 +30,7 @@ export function formatBytes(bytes: number) {
   return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
 }
 
-// Même référence que celle montrée au client (page Stripe, paiement Lydia).
+// Même référence que celle montrée au client et sur la page de paiement Stripe.
 export function orderReference(order: { id: string; reference?: string | null }) {
   return order.reference ?? `JAE-${order.id.slice(-8).toUpperCase()}`;
 }

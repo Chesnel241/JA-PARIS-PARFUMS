@@ -1,6 +1,5 @@
 import { LegalPage, Todo } from "@/components/site/legal-page";
 import { pageMetadata } from "@/components/site/seo";
-import { getPaymentProvider } from "@/lib/stripe";
 
 export function generateMetadata() {
   return pageMetadata({
@@ -11,7 +10,6 @@ export function generateMetadata() {
 }
 
 export default function PrivacyPage() {
-  const card = getPaymentProvider() === "stripe";
   return (
     <LegalPage title="Politique de confidentialité" updated="30 octobre 2026" intro="Nous collectons uniquement les données nécessaires, et ne les vendons jamais.">
       <section>
@@ -43,15 +41,11 @@ export default function PrivacyPage() {
           L’alerte est supprimée sur simple demande ; à défaut, elle est conservée 1 an.
         </p>
         <h3>Paiement</h3>
-        {card ? (
-          <p>
-            Le paiement par carte est traité par Stripe Payments Europe Ltd, qui reçoit votre e-mail, le montant et la
-            référence de commande, ainsi que l’adresse de livraison (prévention de la fraude). JAE Paris ne reçoit ni ne
-            conserve vos données bancaires.
-          </p>
-        ) : (
-          <p>Le paiement est traité par Lydia. JAE Paris ne reçoit ni ne conserve vos données bancaires.</p>
-        )}
+        <p>
+          Le paiement par carte est traité par Stripe Payments Europe Ltd, qui reçoit votre e-mail, le montant et la
+          référence de commande, ainsi que l’adresse de livraison (prévention de la fraude). JAE Paris ne reçoit ni ne
+          conserve vos données bancaires.
+        </p>
       </section>
 
       <section>
@@ -59,7 +53,7 @@ export default function PrivacyPage() {
         <p>
           Vos données sont accessibles au seul personnel habilité de JAE Paris et à ses prestataires techniques, dans la
           limite de leurs missions : hébergement (Vercel Inc.), base de données (<Todo>prestataire</Todo>), paiement
-          ({card ? "Stripe" : "Lydia"}), livraison (<Todo>transporteur</Todo>).
+          (Stripe), livraison (<Todo>transporteur</Todo>).
         </p>
       </section>
 

@@ -33,7 +33,7 @@ export type OrderItemResponse = {
 
 export type OrderResponse = {
   id: string;
-  reference: string; // « JAE-7K3P9Q » : affichée sur la page Stripe / à indiquer dans le message Lydia
+  reference: string; // « JAE-7K3P9Q » : affichée sur la page de paiement Stripe
   email: string;
   subtotal: number; // centimes (= subtotalAmount)
   subtotalAmount: number;
@@ -59,10 +59,8 @@ export type OrderResponse = {
 
 export type CreateOrderResponse = {
   order: OrderResponse;
-  // « stripe » : rediriger le client vers `url` (page de paiement Stripe).
-  payment:
-    | { method: "stripe"; url: string; sessionId: string; reference: string; amount: number; expiresAt: string }
-    | { method: "lydia"; url: string; reference: string; amount: number; message: string };
+  // Rediriger le client vers `url` (page de paiement Stripe).
+  payment: { method: "stripe"; url: string; sessionId: string; reference: string; amount: number; expiresAt: string };
 };
 
 // GET /api/checkout/status?session_id=… (retour de la page Stripe).

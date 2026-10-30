@@ -1,10 +1,11 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
-import { stubExternalPayment } from "../helpers/browser";
 import { createProduct, priceRegExp, productPayload, removeProduct, uniqueEmail, variantStock, type AdminProduct, type CreatedOrder } from "../helpers/factories";
+import type { CardCheckout } from "../helpers/stripe";
 
 // Parcours client complet dans le navigateur (desktop + mobile), sur un produit
-// créé pour le test (prix 25 € → total 25 + 5,90 = 30,90 €).
+// créé pour le test (prix 25 € → total 25 + 5,90 = 30,90 €). Le paiement passe
+// par la page Stripe simulée (tests/helpers/stripe-mock.mjs).
 
 const PRICE = 2500;
 const TOTAL = PRICE + 590;
@@ -22,7 +23,8 @@ async function fillCheckoutForm(page: Page, email: string) {
   if ((await country.count()) > 0 && (await country.inputValue()) === "") await country.fill("France");
 }
 
-async function addProductToCartAndCheckout(page: Page, product: AdminProduct) {
+/** Produit → panier → livraison → redirection vers la page de paiement Stripe. */
+async function checkoutToPaymentPage(page: Page, product: AdminProduct) {
   await page.goto(`/produit/${product.slug}`);
   await expect(page.getByRole("heading", { level: 1, name: product.name })).toBeVisible();
   await page.getByRole("button", { name: /ajouter au panier/i }).click();
@@ -38,39 +40,61 @@ async function addProductToCartAndCheckout(page: Page, product: AdminProduct) {
   await page.getByRole("button", { name: /continuer|commander|valider|passer/i }).first().click();
   const email = uniqueEmail("parcours");
   await fillCheckoutForm(page, email);
-  const orderResponse = page.waitForResponse((response) => response.url().endsWith("/api/orders") && response.request().method() === "POST");
-  await page.getByRole("button", { name: /valider la commande|commander|payer|confirmer/i }).last().click();
-  const response = await orderResponse;
-  expect(response.status()).toBe(201);
-  const { order } = (await response.json()) as { order: CreatedOrder };
-  return { order, email };
+  // La page quitte le site aussitôt la réponse reçue : on la capture au passage.
+  let created: { status: number; body: { order: CreatedOrder; payment: CardCheckout } } | null = null;
+  await page.route("**/api/orders", async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    created = { status: response.status(), body: JSON.parse(body) };
+    await route.fulfill({ response, body });
+  });
+  await page.getByRole("button", { name: /payer par carte/i }).click();
+  await page.waitForURL(/\/pay\/cs_test_/);
+  const result = created as { status: number; body: { order: CreatedOrder; payment: CardCheckout } } | null;
+  expect(result?.status).toBe(201);
+  const { order, payment } = result!.body;
+  expect(payment.method).toBe("stripe");
+  expect(page.url()).toBe(payment.url);
+  return { order, payment, email };
 }
 
-test.describe("Parcours d'achat", () => {
+test.describe("Parcours d'achat (carte bancaire)", () => {
   let product: AdminProduct;
 
-  test.beforeEach(async ({ adminRequest, page }) => {
-    await stubExternalPayment(page);
+  test.beforeEach(async ({ adminRequest }) => {
     product = await createProduct(adminRequest, productPayload({ variants: [{ volume: "50 ml", price: PRICE, stock: 20 }] }));
   });
   test.afterEach(async ({ adminRequest }) => {
     if (product) await removeProduct(adminRequest, product.id);
   });
 
-  test("fiche produit → panier (persistant) → livraison → commande enregistrée, stock décrémenté", async ({ page, adminRequest }) => {
-    const { order, email } = await addProductToCartAndCheckout(page, product);
+  test("fiche produit → panier → livraison → paiement Stripe → confirmation, stock décrémenté", async ({ page, adminRequest }) => {
+    const { order, email } = await checkoutToPaymentPage(page, product);
     expect(order.email).toBe(email);
     expect(order.totalAmount).toBe(TOTAL);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/commande|merci/i);
-    expect(await variantStock(adminRequest, product.id, "50 ml")).toBe(19);
-  });
+    expect(await variantStock(adminRequest, product.id, "50 ml"), "stock réservé pendant le paiement").toBe(19);
 
-  test("la confirmation affiche la référence de commande et le bon total", async ({ page }) => {
-    const { order } = await addProductToCartAndCheckout(page, product);
+    await page.getByRole("link", { name: /^payer/i }).click();
+    await page.waitForURL(/\/panier\?etape=confirmation&session_id=cs_/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/merci/i);
     const confirmation = page.locator("main");
-    // Référence lisible (JAE-XXXXXX) renvoyée par l'API, à reporter dans le message Lydia.
+    await expect(confirmation).toContainText("Paiement confirmé");
     expect(order.reference).toMatch(/^JAE-/);
     await expect(confirmation).toContainText(order.reference as string);
     await expect(confirmation).toContainText(priceRegExp(TOTAL));
+    expect(await variantStock(adminRequest, product.id, "50 ml")).toBe(19);
+
+    // Panier vidé une fois le paiement confirmé.
+    await page.goto("/panier");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/panier attend/i);
+  });
+
+  test("retour depuis la page de paiement : commande annulée, stock restitué, panier conservé", async ({ page, adminRequest }) => {
+    const { order } = await checkoutToPaymentPage(page, product);
+    await page.getByRole("link", { name: /^retour/i }).click();
+    await page.waitForURL(/\/panier/);
+    await expect(page.getByText(new RegExp(`commande ${order.reference} a été annulée`))).toBeVisible();
+    await expect(page.getByText(product.name).first()).toBeVisible();
+    await expect.poll(() => variantStock(adminRequest, product.id, "50 ml"), { message: "stock restitué après abandon" }).toBe(20);
   });
 });

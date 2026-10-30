@@ -7,7 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Info, ShieldCheck, Truck, X } from "lucide-react";
 import { useCart, type CartAdjustment, type CatalogSnapshot } from "@/lib/cart";
 import { formatPrice } from "@/lib/data";
-import { paymentCopy, type PaymentProvider } from "@/lib/payment";
+import { PAYMENT_COPY } from "@/lib/payment";
 import { CartLine } from "@/components/commerce/cart-line";
 import { CardReturn, type CardReturnView } from "./card-return";
 import { CheckoutForm } from "./checkout-form";
@@ -63,7 +63,7 @@ type CardReturnState = { sessionId: string; view: CardReturnView | "done" };
 const ABANDONED_NOTICE = (reference: string) =>
   `Paiement non finalisé : la commande ${reference} a été annulée et ses articles remis en stock. Votre panier est conservé.`;
 
-export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSnapshot[]; paymentProvider: PaymentProvider }) {
+export function CartCheckout({ catalog }: { catalog: CatalogSnapshot[] }) {
   const cart = useCart();
   const { items, hydrated, subtotal, shipping, grandTotal, reconcile, updateQuantity, removeItem, clearCart } = cart;
   const router = useRouter();
@@ -208,15 +208,6 @@ export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSna
 
   const goTo = useCallback((next: Step) => setStepUrl(next), []);
 
-  const handleSuccess = useCallback((order: ConfirmedOrder) => {
-    saveLastOrder(order);
-    setLastOrder(order);
-    clearDraft();
-    clearCart();
-    setNotices([]);
-    setStepUrl("confirmation", "replace");
-  }, [clearCart]);
-
   // 409 : le serveur a refusé pour stock insuffisant → on recharge le catalogue
   // (composant serveur) ; la réconciliation ajuste alors le panier.
   const handleStockConflict = useCallback(() => {
@@ -292,17 +283,11 @@ export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSna
           </div>
           {lastOrder ? (
             <div className="cm-empty__pending">
-              {lastOrder.method === "card" ? (
-                <p>
-                  Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} {lastOrder.paymentState === "paid" ? "réglée par carte." : "en cours de validation."}
-                </p>
-              ) : (
-                <p>
-                  Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} en attente de paiement.
-                </p>
-              )}
+              <p>
+                Commande <strong>{lastOrder.reference}</strong> · {formatPrice(lastOrder.total)} {lastOrder.paymentState === "paid" ? "réglée par carte." : "en cours de validation."}
+              </p>
               <button type="button" className="cm-text-button" onClick={() => goTo("confirmation")}>
-                {lastOrder.method === "card" ? "Voir le récapitulatif" : "Voir les instructions de paiement"}
+                Voir le récapitulatif
               </button>
             </div>
           ) : null}
@@ -338,7 +323,7 @@ export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSna
                   Passer commande <ArrowRight aria-hidden="true" size={16} />
                 </button>
                 <ul className="cm-summary__assurances">
-                  <li><ShieldCheck aria-hidden="true" /> {paymentCopy(paymentProvider).short}</li>
+                  <li><ShieldCheck aria-hidden="true" /> {PAYMENT_COPY.short}</li>
                   <li><Truck aria-hidden="true" /> Expédition sous 2 à 3 jours</li>
                 </ul>
               </OrderSummary>
@@ -358,7 +343,7 @@ export function CartCheckout({ catalog, paymentProvider }: { catalog: CatalogSna
           </header>
           <div className="cm-checkout cm-checkout--form">
             <div className="cm-checkout__form">
-              <CheckoutForm items={items} total={grandTotal} paymentProvider={paymentProvider} onSuccess={handleSuccess} onStockConflict={handleStockConflict} />
+              <CheckoutForm items={items} total={grandTotal} onStockConflict={handleStockConflict} />
             </div>
             <aside className="cm-checkout__aside">
               <OrderSummary showLines lines={summaryLines} subtotal={subtotal} shipping={shipping} total={grandTotal} />

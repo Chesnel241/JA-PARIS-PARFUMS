@@ -21,7 +21,8 @@
     "docker:up": "docker compose -f docker-compose.prod.yml up -d",
     "docker:down": "docker compose -f docker-compose.prod.yml down",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "stripe:mock": "node tests/helpers/stripe-mock.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",

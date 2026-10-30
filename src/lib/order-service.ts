@@ -16,7 +16,7 @@ type TransactionClient = Prisma.TransactionClient;
 // Référence de commande
 // ---------------------------------------------------------------------------
 
-// Référence lisible que le client recopie dans son message Lydia :
+// Référence lisible affichée au client et sur la page de paiement Stripe :
 // « JAE-7K3P9Q ». Alphabet sans caractères ambigus (0/O, 1/I/L).
 export const ORDER_REFERENCE_PREFIX = "JAE-";
 const REFERENCE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -83,9 +83,9 @@ export const FULFILLMENT_STATUSES: OrderStatus[] = [
   OrderStatus.DELIVERED,
 ];
 
-// Confirme le paiement. Le stock a déjà été décrémenté à la commande : on ne
-// touche donc pas au stock ici. Idempotent (si déjà payée) ; refuse une
-// commande annulée.
+// Confirme à la main le paiement d'une ancienne commande Lydia. Le stock a
+// déjà été décrémenté à la commande : on n'y touche pas. Idempotent (si déjà
+// payée) ; refuse une commande annulée ou payée par carte.
 export async function confirmOrderPayment(id: string) {
   return prisma.$transaction(async (tx) => {
     const order = await lockOrder(tx, id);
@@ -94,6 +94,10 @@ export async function confirmOrderPayment(id: string) {
     }
     if (order.paymentStatus === PaymentStatus.PAID) {
       return tx.order.findUniqueOrThrow({ where: { id }, include: orderInclude });
+    }
+    // Seul Stripe atteste un paiement par carte (webhook ou session relue).
+    if (order.stripeSessionId) {
+      throw new ApiError(409, "Commande payée par carte : le paiement est confirmé automatiquement par Stripe.", { code: "CARD_PAYMENT" });
     }
     return tx.order.update({
       where: { id },

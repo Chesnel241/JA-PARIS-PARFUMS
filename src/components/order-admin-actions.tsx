@@ -20,7 +20,8 @@ type Props = {
   status: OrderStatusValue;
   paymentStatus: PaymentStatusValue;
   // « card » : Stripe Checkout (paiement confirmé automatiquement par Stripe,
-  // remboursement automatique à l'annulation) ; « lydia » : confirmation manuelle.
+  // remboursement automatique à l'annulation) ; « lydia » : ancienne commande
+  // (avant le paiement par carte), confirmée à la main.
   method?: "card" | "lydia";
   layout?: "row" | "detail";
 };
@@ -48,7 +49,7 @@ const SUCCESS: Record<string, string> = {
   CONFIRMED: "Statut mis à jour",
 };
 
-export function OrderAdminActions({ id, reference, totalAmount, status, paymentStatus, method = "lydia", layout = "detail" }: Props) {
+export function OrderAdminActions({ id, reference, totalAmount, status, paymentStatus, method = "card", layout = "detail" }: Props) {
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
@@ -134,7 +135,7 @@ export function OrderAdminActions({ id, reference, totalAmount, status, paymentS
         </div>
       ) : canConfirmPayment ? (
         <div className="adm-next" data-tone="warning">
-          <p className="adm-next-title">En attente du paiement Lydia</p>
+          <p className="adm-next-title">Ancienne commande Lydia : paiement en attente</p>
           <p>Vérifiez sur Lydia la réception de <strong>{formatEuros(totalAmount)}</strong> (référence {reference}), puis confirmez.</p>
           <div className="adm-next-actions">
             <button type="button" className="adm-btn adm-btn--primary" disabled={busy} onClick={confirmPayment}>{spinner("confirm-payment", BadgeCheck)} Confirmer le paiement</button>

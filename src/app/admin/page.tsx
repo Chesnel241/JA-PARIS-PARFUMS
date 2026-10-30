@@ -22,7 +22,7 @@ export default async function AdminDashboardPage() {
   const [revenue, revenue30, awaitingPayment, toPrepare, shipped, newApplications, subscribers, subscribers30, lowStock, recentOrders, activeProducts] = await Promise.all([
     prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.PAID }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.PAID, createdAt: { gte: since30 } }, _sum: { totalAmount: true } }),
-    // Seuls les paiements Lydia se vérifient à la main (la carte se confirme seule).
+    // Seules les anciennes commandes Lydia se vérifient à la main (la carte se confirme seule).
     prisma.order.aggregate({ where: { paymentStatus: PaymentStatus.UNPAID, status: { not: OrderStatus.CANCELLED }, stripeSessionId: null }, _sum: { totalAmount: true }, _count: true }),
     prisma.order.count({ where: { paymentStatus: PaymentStatus.PAID, status: { in: [OrderStatus.CONFIRMED, OrderStatus.PREPARING] } } }),
     prisma.order.count({ where: { status: OrderStatus.SHIPPED } }),
@@ -136,7 +136,7 @@ export default async function AdminDashboardPage() {
             <div className="adm-alert adm-alert--warning">
               <TriangleAlert aria-hidden />
               <div>
-                <strong>{plural(awaitingPayment._count, "paiement")} Lydia à vérifier.</strong>
+                <strong>{plural(awaitingPayment._count, "ancienne commande", "anciennes commandes")} Lydia à vérifier.</strong>
                 <div>Comparez les montants reçus sur Lydia avec la référence de commande, puis confirmez le paiement. <Link className="adm-link" href="/admin/commandes?filtre=to-pay">Voir les commandes</Link></div>
               </div>
             </div>

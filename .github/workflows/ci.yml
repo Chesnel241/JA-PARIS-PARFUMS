@@ -42,6 +42,11 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3005
       BASE_URL: http://127.0.0.1:3005
       NEXT_TELEMETRY_DISABLED: "1"
+      # Paiement par carte : API Stripe simulée (tests/helpers/stripe-mock.mjs).
+      # Clé de TEST factice : STRIPE_API_BASE n'est jamais honorée avec une clé live.
+      STRIPE_SECRET_KEY: sk_test_ciMock0123456789abcdef
+      STRIPE_WEBHOOK_SECRET: whsec_ciMock0123456789abcdef
+      STRIPE_API_BASE: http://127.0.0.1:12111
 
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +87,15 @@ jobs:
           cp -r .next/static "$SERVER_DIR/.next/static"
           cp -r public "$SERVER_DIR/public"
 
+      - name: Démarrage de l'API Stripe simulée
+        run: |
+          nohup node tests/helpers/stripe-mock.mjs > "$GITHUB_WORKSPACE/stripe-mock.log" 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:12111/__mock/health; then echo "Stripe simulé prêt après ${i}s"; exit 0; fi
+            sleep 1
+          done
+          echo "L'API Stripe simulée n'a pas démarré :"; cat "$GITHUB_WORKSPACE/stripe-mock.log"; exit 1
+
       - name: Démarrage du serveur
         run: |
           cd "$SERVER_DIR"
@@ -104,4 +118,5 @@ jobs:
             playwright-report/
             test-results/
             server.log
+            stripe-mock.log
           retention-days: 14

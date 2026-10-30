@@ -39,10 +39,3 @@ export async function expectNoHorizontalOverflow(page: Page) {
     Math.min(viewportWidth, metrics.innerWidth) + 1,
   );
 }
-
-/** Lien de paiement externe : on ne sort jamais vers Lydia pendant les tests. */
-export async function stubExternalPayment(page: Page) {
-  await page.route(/^https:\/\/(pay\.)?lydia(-app)?\.(me|com)\//, (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: '<!doctype html><html lang="fr"><title>Lydia (stub QA)</title><h1>Paiement</h1></html>' }),
-  );
-}

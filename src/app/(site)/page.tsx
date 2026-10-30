@@ -2,8 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductCategory } from "@prisma/client";
 import { getPublicProducts } from "@/lib/catalog";
-import { paymentCopy } from "@/lib/payment";
-import { getPaymentProvider } from "@/lib/stripe";
+import { PAYMENT_COPY } from "@/lib/payment";
 import { formatPrice, type Product } from "@/lib/data";
 import { capitalize, listFr, numberWord, paletteOf } from "@/lib/heures";
 import { allNotes, buyVariant, pickFeatured, shownVariant, sortByDay } from "@/lib/maison";
@@ -25,7 +24,7 @@ export function generateMetadata() {
 }
 
 // Questions fréquentes : la première réponse cite les heures de la collection.
-function faqItems(timed: Product[], payment: ReturnType<typeof paymentCopy>) {
+function faqItems(timed: Product[]) {
   const hours = timed.length > 0
     ? ` : ${listFr(timed.map((perfume) => `${(perfume.moment || perfume.hour || "").toLocaleLowerCase("fr-FR")} pour ${perfume.name}`), false)}`
     : "";
@@ -33,7 +32,7 @@ function faqItems(timed: Product[], payment: ReturnType<typeof paymentCopy>) {
     { q: "Que veut dire « l’heure » d’un parfum ?", a: `Chaque parfum de la collection est inspiré d’un moment de la journée${hours}. C’est une inspiration, pas une règle : portez votre parfum quand vous le souhaitez.` },
     { q: "Combien coûte la livraison ?", a: "Elle est offerte dès 50 € d’achat. En dessous, elle coûte 5,90 €. Les commandes sont expédiées sous 2 à 3 jours." },
     { q: "Puis-je retourner un article ?", a: "Oui, sous 14 jours, si l’article est intact et non ouvert." },
-    { q: "Comment se passe le paiement ?", a: payment.faq },
+    { q: "Comment se passe le paiement ?", a: PAYMENT_COPY.faq },
     { q: "Je ne sais pas quel parfum choisir.", a: "Faites le quiz « Trouver mon heure » : quatre questions sur vos moments et vos goûts, et nous vous indiquons le parfum qui vous ressemble." },
     { q: "Comment rejoindre le Cercle JAE ?", a: "Remplissez le formulaire de candidature. Nous étudions votre profil et vous répondons par e-mail." },
   ];
@@ -68,7 +67,6 @@ export default async function Home() {
   const [products, images] = await Promise.all([getPublicProducts(), getCachedSiteImages()]);
   const perfumes = sortByDay(products.filter((product) => product.category === ProductCategory.PARFUM));
   const featured = pickFeatured(perfumes);
-  const payment = paymentCopy(getPaymentProvider());
   const featuredShown = featured ? shownVariant(featured) : null;
   const featuredBuy = featured ? buyVariant(featured) : null;
   const featuredPhotos = featured ? photosOf(featured) : [];
@@ -83,7 +81,7 @@ export default async function Home() {
     : null;
   const title = collectionTitle(perfumes);
   const timed = perfumes.filter((perfume) => perfume.hour);
-  const faq = faqItems(timed, payment);
+  const faq = faqItems(timed);
 
   // Matières : chaque note une seule fois, à la couleur du premier parfum qui la porte.
   const materials = new Map<string, string>();
@@ -136,7 +134,7 @@ export default async function Home() {
         <ul className="wrap">
           <li className="garantie"><span className="ic"><TruckIcon /></span><div><strong>Livraison offerte dès 50&nbsp;€</strong><span>Sinon 5,90&nbsp;€, expédiée en 2 à 3 jours</span></div></li>
           <li className="garantie"><span className="ic"><ReturnIcon /></span><div><strong>Retours sous 14 jours</strong><span>Article intact et non ouvert</span></div></li>
-          <li className="garantie"><span className="ic"><LockIcon /></span><div><strong>Paiement sécurisé</strong><span>{payment.detail}</span></div></li>
+          <li className="garantie"><span className="ic"><LockIcon /></span><div><strong>Paiement sécurisé</strong><span>{PAYMENT_COPY.detail}</span></div></li>
           <li className="garantie"><span className="ic"><ClockIcon /></span><div><strong>Composé à Paris</strong><span>Une collection pensée heure par heure</span></div></li>
         </ul>
       </section>

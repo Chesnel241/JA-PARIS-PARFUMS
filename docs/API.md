@@ -62,8 +62,8 @@ Corps :
 - 1 à 30 lignes ; lignes identiques (slug + contenance) **fusionnées** ; quantité entière 1–10 par article (après fusion).
 - Code postal : 5 chiffres si pays = France/FR, sinon 2–10 caractères alphanumériques. Téléphone : 6–15 chiffres. `country` vaut `France` par défaut.
 - Livraison : 5,90 € si sous-total < 50 €, offerte à partir de 50 € (`src/lib/shipping.ts`).
-- Stock décrémenté de façon atomique à la commande ; la commande est `PENDING` / `UNPAID` jusqu'à confirmation du paiement (automatique par Stripe, manuelle pour Lydia).
-- **Moyen de paiement** : carte bancaire via **Stripe Checkout** dès que `STRIPE_SECRET_KEY` est définie, sinon repli sur le lien **Lydia** (voir « Paiement par carte (Stripe) » ci-dessous).
+- Stock décrémenté de façon atomique à la commande ; la commande est `PENDING` / `UNPAID` jusqu'à confirmation du paiement par Stripe.
+- **Moyen de paiement unique** : carte bancaire via **Stripe Checkout** (voir « Paiement par carte (Stripe) » ci-dessous). Sans `STRIPE_SECRET_KEY` valide, aucune commande n'est créée (503).
 
 Réponses :
 - **201**
@@ -84,13 +84,13 @@ Réponses :
   }
 }
 ```
-  Le client est redirigé vers `payment.url` (page de paiement Stripe). Sans Stripe, `payment` vaut
-  `{ "method": "lydia", "url": "https://pay.lydia.me/l?t=…", "reference", "amount", "message" }` (constante `LYDIA_PAYMENT_URL` dans `src/lib/payment.ts`).
-  La référence (`JAE-` + 6 caractères sans 0/O/1/I/L) est unique : affichée sur la page Stripe, ou recopiée dans le message Lydia.
+  Le client est redirigé vers `payment.url` (page de paiement Stripe).
+  La référence (`JAE-` + 6 caractères sans 0/O/1/I/L) est unique et affichée sur la page Stripe.
 - **422** validation — `error` = premier message lisible (ex. `Le code postal doit comporter 5 chiffres.`), `fields` détaillé.
 - **409** `code: "UNAVAILABLE"` (produit/contenance inexistant ou inactif) ou `code: "OUT_OF_STOCK"` avec `item: { slug, volume, available }` (ex. `Stock insuffisant pour Or Solaire · 50 ml : 1 disponible.`).
 - **429** limiteur.
 - **502** `code: "PAYMENT_UNAVAILABLE"` : Stripe injoignable ; la commande est annulée aussitôt et le stock restitué (le panier du client est conservé).
+- **503** `code: "PAYMENT_UNAVAILABLE"` : paiement par carte non configuré (`STRIPE_SECRET_KEY` absente ou invalide) ; rien n'est enregistré.
 
 ### Paiement par carte (Stripe)
 
@@ -228,7 +228,7 @@ Transitions (la ligne est verrouillée `FOR UPDATE` : doubles clics sans effet) 
 - `confirm-payment` : `UNPAID → PAID`, `PENDING → CONFIRMED`. Idempotent. Commande annulée → 409 `ORDER_NOT_CONFIRMABLE`.
 - `set-status` : exige `PAID` (sinon 409 `PAYMENT_REQUIRED`) ; interdit sur commande annulée (409 `ORDER_CANCELLED`) ; retour arrière permis entre statuts de préparation.
 - `cancel` : restitue le stock (une seule fois, idempotent), `PAID → REFUNDED`. Commande livrée → 409 `ORDER_DELIVERED`. Commande par carte : la session Stripe encore ouverte est d'abord fermée, et un paiement encaissé est **remboursé automatiquement** via Stripe avant l'annulation (échec → 502 `REFUND_FAILED`, commande inchangée).
-- `confirm-payment` est réservé aux paiements Lydia : un paiement par carte n'est confirmé que par Stripe (l'admin n'affiche pas l'action).
+- `confirm-payment` est réservé aux anciennes commandes Lydia (antérieures au paiement par carte) : sur une commande par carte → 409 `CARD_PAYMENT`, seul Stripe confirme un paiement.
 
 ### Médias
 | Méthode & route | Corps | Réponses |
